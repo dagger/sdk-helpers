@@ -1,3 +1,16 @@
+"""Helpers for Dagger SDKs."""
+type SdkHelpers {
+  """Construct or load a module manifest."""
+  moduleManifest(
+    """Optional dagger-module.toml file to load."""
+    loadTOML: File = null,
+    """Optional dagger.json file to load."""
+    loadJSON: File = null,
+  ): ModuleManifest! {
+    ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
+  }
+}
+
 """A Dagger module manifest."""
 type ModuleManifest {
   let name: String! = ""
