@@ -1,0 +1,973 @@
+"""A Dagger module manifest."""
+type ModuleManifest {
+  let name: String! = ""
+  let entrypointKind: String! = ""
+  let entrypointSource: String! = ""
+  let legacyRuntime: String! = ""
+  let legacyModuleSource: String! = ""
+  let legacyEngineVersion: String! = ""
+  let legacyInclude: [String!]! = []
+  let legacyRuntimeDependencies: [String!]! = []
+  let tomlConfig: String = null
+  let legacyJSONConfig: String = null
+  let loadedLegacyJSON: Boolean! = false
+
+  new(
+    """Optional dagger-module.toml file to load."""
+    loadTOML: File = null,
+    """Optional dagger.json file to load."""
+    loadJSON: File = null,
+  ) {
+    let withJSON = if (loadJSON == null) {
+      self
+    } else {
+      self.loadJSON(loadJSON.contents)
+    }
+    if (loadTOML == null) {
+      withJSON
+    } else {
+      withJSON.loadTOML(loadTOML.contents)
+    }
+  }
+
+  """Set the module name."""
+  withName(
+    """Module name."""
+    name: String!,
+  ): ModuleManifest! {
+    self.name = name
+    self
+  }
+
+  """Add or replace a module available to the legacy runtime."""
+  withLegacyRuntimeDependency(
+    """Module source address."""
+    source: String!,
+    """Optional module name in the legacy runtime schema."""
+    name: String = null,
+    """Optional module source pin."""
+    pin: String = null,
+  ): ModuleManifest! {
+    let dependency = self.newDependency(name ?? "", source, pin ?? "")
+    let matchIndexes = legacyRuntimeDependencies.map { configured, index =>
+      if (self.dependencyMatches(configured, name ?? "", source)) { index } else { -1 }
+    }
+    let matchIndex = matchIndexes.find { index => index >= 0 }
+    if (matchIndex == null) {
+      self.legacyRuntimeDependencies = self.sortDependencies(
+        legacyRuntimeDependencies + [dependency],
+      )
+    } else {
+      self.legacyRuntimeDependencies = legacyRuntimeDependencies.map { configured, index =>
+        if (index == matchIndex) { dependency } else { configured }
+      }
+    }
+    self
+  }
+
+  """Remove a module from the legacy runtime by name."""
+  withoutLegacyRuntimeDependency(
+    """Module name."""
+    name: String!,
+  ): ModuleManifest! {
+    self.legacyRuntimeDependencies = legacyRuntimeDependencies.reject { dependency =>
+      self.dependencyName(dependency) == name or
+        (self.dependencyName(dependency) == "" and self.dependencySource(dependency) == name)
+    }
+    self
+  }
+
+  """Remove all modules from the legacy runtime."""
+  withoutLegacyRuntimeDependencies: ModuleManifest! {
+    self.legacyRuntimeDependencies = []
+    self
+  }
+
+  """Use the built-in Dang entrypoint."""
+  withDangEntrypoint(
+    """Entrypoint source address."""
+    source: String!,
+  ): ModuleManifest! {
+    self.withEntrypoint("dang", source)
+  }
+
+  """Use another module as the entrypoint."""
+  withModuleEntrypoint(
+    """Entrypoint module address."""
+    source: String!,
+  ): ModuleManifest! {
+    self.withEntrypoint("module", source)
+  }
+
+  """Add the legacy Go runtime."""
+  withLegacyGoRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("go", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy Dang runtime."""
+  withLegacyDangRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("dang", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy Python runtime."""
+  withLegacyPythonRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("python", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy TypeScript runtime."""
+  withLegacyTypescriptRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("typescript", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy PHP runtime."""
+  withLegacyPHPRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("php", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy Elixir runtime."""
+  withLegacyElixirRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("elixir", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """Add the legacy Java runtime."""
+  withLegacyJavaRuntime(
+    """Module source path. The default is the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default is the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.withLegacyRuntime("java", moduleSource ?? "", engineVersion ?? "")
+  }
+
+  """
+  Add an include path for the legacy runtime.
+
+  This operation is additive.
+  """
+  withLegacyInclude(
+    """Path to include."""
+    path: String!,
+  ): ModuleManifest! {
+    self.legacyInclude += [path]
+    self
+  }
+
+  """Remove the legacy runtime, module source, engine version, include paths, and runtime dependencies."""
+  withoutLegacyFields: ModuleManifest! {
+    self.legacyRuntime = ""
+    self.legacyModuleSource = ""
+    self.legacyEngineVersion = ""
+    self.legacyInclude = []
+    self.legacyRuntimeDependencies = []
+    self.loadedLegacyJSON = false
+    self
+  }
+
+  """
+  Validate the manifest.
+
+  If targetEngineVersion is set, also validate the legacy runtime against that engine version.
+  """
+  validate(
+    """Optional target engine version."""
+    targetEngineVersion: String = null,
+  ): Void {
+    if (name == "") {
+      raise "module manifest name is required"
+    }
+    let hasEntrypointKind = entrypointKind != ""
+    let hasEntrypointSource = entrypointSource != ""
+    if (hasEntrypointKind != hasEntrypointSource) {
+      raise "module manifest entrypoint kind and source must be set together"
+    }
+    if (hasEntrypointKind and entrypointKind != "dang" and entrypointKind != "module") {
+      raise "module manifest entrypoint kind must be dang or module"
+    }
+    let hasLegacyFields = legacyModuleSource != "" or
+      legacyEngineVersion != "" or
+      !legacyInclude.isEmpty or
+      !legacyRuntimeDependencies.isEmpty
+    if (legacyRuntime == "" and hasLegacyFields) {
+      raise "module manifest legacy runtime is required when legacy fields are set"
+    }
+    if (legacyRuntime != "") {
+      if (!self.isBuiltinRuntime(legacyRuntime) and tomlConfig == null and legacyJSONConfig == null) {
+        raise "module manifest legacy runtime " + JSON.encode(legacyRuntime) + " is not supported"
+      }
+      if (legacyEngineVersion == "") {
+        raise "module manifest legacy engine version is required"
+      }
+    }
+    if (!hasEntrypointKind and legacyRuntime == "") {
+      raise "module manifest requires an entrypoint or legacy runtime"
+    }
+    let target = targetEngineVersion ?? ""
+    if (target != "" and legacyRuntime != "") {
+      let normalizedTarget = self.normalizeEngineVersion(target)
+      if (!self.versionAtMost(legacyEngineVersion, normalizedTarget)) {
+        raise "module manifest legacy runtime requires dagger " + legacyEngineVersion +
+          ", but target engine is " + normalizedTarget
+      }
+    }
+    null
+  }
+
+  """Serialize the manifest as dagger-module.toml."""
+  tomlFile: File! {
+    validate
+    Dagger.file("dagger-module.toml", self.tomlContents)
+  }
+
+  """Serialize the legacy fields as dagger.json."""
+  legacyJSONFile: File! {
+    validate
+    if (legacyRuntime == "" and !loadedLegacyJSON) {
+      raise "module manifest has no legacy runtime"
+    }
+    Dagger.file("dagger.json", self.legacyJSONContents)
+  }
+
+  """Return a directory with all applicable manifest files."""
+  directory: Directory! {
+    validate
+    let output = Dagger.directory.withNewFile(
+      "dagger-module.toml",
+      self.tomlContents,
+      permissions: 420,
+    )
+    if (legacyRuntime != "" or loadedLegacyJSON) {
+      output.withNewFile("dagger.json", self.legacyJSONContents, permissions: 420)
+    } else {
+      output
+    }
+  }
+
+  let withEntrypoint(kind: String!, source: String!): ModuleManifest! {
+    self.entrypointKind = kind
+    self.entrypointSource = source
+    self
+  }
+
+  let withLegacyRuntime(
+    runtime: String!,
+    moduleSource: String!,
+    engineVersion: String!,
+  ): ModuleManifest! {
+    self.legacyRuntime = runtime
+    self.legacyModuleSource = moduleSource
+    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion)
+    self.loadedLegacyJSON = true
+    self
+  }
+
+  let loadJSON(contents: String!): ModuleManifest! {
+    self.parseJSON(contents) rescue {
+      error: Error => raise "load dagger.json: " + error.message
+    }
+  }
+
+  let parseJSON(contents: String!): ModuleManifest! {
+    let config = self.canonicalJSON(contents)
+    self.checkLoadedEngineVersion(config)
+    if (self.hasField(config, "runtime")) {
+      raise "dagger.json uses sdk instead of runtime"
+    }
+    self.validateLegacyConfig(config)
+    self.legacyJSONConfig = config
+    self.loadedLegacyJSON = true
+    if (tomlConfig == null) {
+      self.tomlConfig = config
+      self.loadCanonicalConfig(config)
+    } else {
+      self
+    }
+  }
+
+  let loadTOML(contents: String!): ModuleManifest! {
+    self.parseTOML(contents) rescue {
+      error: Error => raise "load dagger-module.toml: " + error.message
+    }
+  }
+
+  let parseTOML(contents: String!): ModuleManifest! {
+    let decoded = self.canonicalJSON(JSON.encode(TOML.decode(contents)))
+    # The current schema does not load deprecated SDK settings.
+    let config = self.jsonObject(self.sortStrings(self.jsonValue(decoded).fields).map { field =>
+      let raw = self.rawFieldOrNull(decoded, field)
+      self.jsonMember(field, if (field == "runtime") {
+        self.jsonObject([
+          self.jsonMember("source", JSON.encode(self.stringField(raw, "source"))),
+          self.jsonMember("pin", JSON.encode(self.stringField(raw, "pin"))),
+        ])
+      } else { raw })
+    })
+    self.checkLoadedEngineVersion(config)
+    self.validateCurrentConfig(config)
+    self.tomlConfig = config
+    if (legacyJSONConfig == null) {
+      self.legacyJSONConfig = config
+    }
+    let entrypoint = self.rawField(config, "entrypoint")
+    if (entrypoint != null and entrypoint != "null") {
+      self.entrypointKind = self.stringField(entrypoint, "kind")
+      self.entrypointSource = self.stringField(entrypoint, "source")
+    }
+    self.loadCanonicalConfig(config)
+  }
+
+  let loadCanonicalConfig(config: String!): ModuleManifest! {
+    self.name = self.stringField(config, "name")
+    self.legacyModuleSource = self.stringField(config, "source")
+    self.legacyEngineVersion = self.stringField(config, "engineVersion")
+    self.legacyInclude = self.stringListField(config, "include") +
+      self.stringListField(config, "exclude").filter { path => path != "" }.map { path =>
+        if (path.hasPrefix("!")) { path.trimPrefix("!") } else { "!" + path }
+      }
+    self.legacyRuntimeDependencies = self.rawListField(config, "dependencies").filter { raw =>
+      raw != "null"
+    }
+    let sdk = self.baseSDK(config)
+    self.legacyRuntime = self.sdkSource(sdk)
+    if (legacyRuntime != "" and legacyModuleSource == "") {
+      self.legacyModuleSource = "."
+    }
+    self
+  }
+
+  let validateLegacyConfig(config: String!): Void {
+    self.stringField(config, "$schema")
+    self.stringField(config, "name")
+    self.stringField(config, "engineVersion")
+    self.stringListField(config, "include")
+    self.stringListField(config, "exclude")
+    self.stringField(config, "source")
+    let sdk = self.baseSDK(config)
+    if (sdk != "null") {
+      self.sdkSource(sdk)
+      if (!sdk.hasPrefix("\"")) {
+        self.stringField(sdk, "pin")
+        let sdkConfig = self.rawField(sdk, "config")
+        if (sdkConfig != null and sdkConfig != "null") {
+          self.jsonValue(sdkConfig).fields
+        }
+        self.booleanField(sdk, "debug")
+        let experimental = self.rawField(sdk, "experimental")
+        if (experimental != null and experimental != "null") {
+          self.booleanMapJSON(experimental)
+        }
+      }
+    }
+    let blueprint = self.rawField(config, "blueprint")
+    if (blueprint != null and blueprint != "null") {
+      self.dependencyJSON(blueprint, true)
+    }
+    self.rawListField(config, "toolchains").filter { raw => raw != "null" }.each { raw =>
+      self.dependencyJSON(raw, true)
+    }
+    self.rawListField(config, "dependencies").filter { raw => raw != "null" }.each { raw =>
+      self.dependencyJSON(raw, true)
+    }
+    let codegen = self.rawField(config, "codegen")
+    if (codegen != null and codegen != "null") {
+      self.codegenJSON(codegen)
+    }
+    self.rawListField(config, "clients").filter { raw => raw != "null" }.each { raw =>
+      self.clientJSON(raw)
+    }
+    self.booleanField(config, "disableDefaultFunctionCaching")
+    null
+  }
+
+  let validateCurrentConfig(config: String!): Void {
+    if (self.hasField(config, "sdk")) {
+      raise "dagger-module.toml uses runtime instead of sdk"
+    }
+    if (self.hasField(config, "blueprint")) {
+      raise "dagger-module.toml does not support \"blueprint\""
+    }
+    if (self.hasField(config, "toolchains")) {
+      raise "dagger-module.toml does not support \"toolchains\""
+    }
+    self.rawListField(config, "dependencies").each { dependency, index =>
+      ["customizations", "ignoreChecks", "ignoreGenerators", "ignoreServices", "portMappings"].each { field =>
+        if (self.hasField(dependency, field)) {
+          raise "dagger-module.toml dependency " + toString(index) +
+            " does not support " + JSON.encode(field)
+        }
+      }
+      self.dependencyJSON(dependency, false)
+    }
+    self.validateLegacyConfig(config)
+    let runtime = self.rawField(config, "runtime")
+    if (runtime != null and runtime != "null") {
+      self.sdkSource(runtime)
+      self.stringField(runtime, "pin")
+    }
+    let entrypoint = self.rawField(config, "entrypoint")
+    if (entrypoint != null and entrypoint != "null") {
+      self.stringField(entrypoint, "kind")
+      self.stringField(entrypoint, "source")
+    }
+    null
+  }
+
+  let checkLoadedEngineVersion(config: String!): Void {
+    let requested = self.normalizeVersion(self.stringField(config, "engineVersion"))
+    let current = self.currentEngineVersion
+    if (!self.versionAtMost(requested, current)) {
+      raise "module requires dagger " + requested + ", but you have " + current
+    }
+    null
+  }
+
+  let tomlContents: String! {
+    let base = tomlConfig
+    let scalarLines = self.optionalTOMLString(base, "$schema", "\"$schema\"") +
+      ["name = " + self.tomlString(name)] +
+      self.optionalTOMLValue("engineVersion", legacyEngineVersion) +
+      self.optionalTOMLStringList("include", legacyInclude) +
+      self.optionalTOMLValue("source", legacyModuleSource) +
+      self.optionalTOMLBoolean(base, "disableDefaultFunctionCaching")
+    let runtimeTable = if (legacyRuntime == "") {
+      [] :: [String!]!
+    } else {
+      let sdk = self.baseSDK(base)
+      let pin = if (self.sdkSource(sdk) == legacyRuntime and !sdk.hasPrefix("\"")) {
+        self.stringField(sdk, "pin")
+      } else {
+        ""
+      }
+      [
+        "[runtime]\n  source = " + self.tomlString(legacyRuntime) +
+          (if (pin == "") { "" } else { "\n  pin = " + self.tomlString(pin) }),
+      ]
+    }
+    let dependencyTables = legacyRuntimeDependencies.map { dependency =>
+      let dependencyName = self.dependencyName(dependency)
+      "[[dependencies]]\n" +
+        (if (dependencyName == "") { "" } else { "  name = " + self.tomlString(dependencyName) + "\n" }) +
+        "  source = " + self.tomlString(self.dependencySource(dependency)) +
+        (if (self.dependencyPin(dependency) == "") {
+          ""
+        } else {
+          "\n  pin = " + self.tomlString(self.dependencyPin(dependency))
+        })
+    }
+    let codegenTable = self.tomlCodegen(base)
+    let clientTables = self.rawListFieldOrEmpty(base, "clients").filter { raw =>
+      raw != "null"
+    }.map { raw => self.tomlClient(raw) }
+    let entrypointTable = if (entrypointKind == "") {
+      [] :: [String!]!
+    } else {
+      [
+        "[entrypoint]\n  kind = " + self.tomlString(entrypointKind) +
+          "\n  source = " + self.tomlString(entrypointSource),
+      ]
+    }
+    let tables = runtimeTable + dependencyTables + codegenTable + clientTables + entrypointTable
+    scalarLines.join("\n") +
+      (if (tables.isEmpty) { "\n" } else { "\n\n" + tables.join("\n\n") + "\n" })
+  }
+
+  let legacyJSONContents: String! {
+    let base = legacyJSONConfig
+    let schema = self.stringFieldOrEmpty(base, "$schema")
+    let sdk = self.legacySDKJSON(base)
+    let blueprint = self.rawFieldOrNull(base, "blueprint")
+    let toolchains = self.rawListFieldOrEmpty(base, "toolchains").filter { raw =>
+      raw != "null"
+    }.map { raw => self.dependencyJSON(raw, true) }
+    let dependencies = legacyRuntimeDependencies.map { raw => self.dependencyJSON(raw, true) }
+    let codegen = self.rawFieldOrNull(base, "codegen")
+    let clients = self.rawListFieldOrEmpty(base, "clients").filter { raw =>
+      raw != "null"
+    }.map { raw => self.clientJSON(raw) }
+    let disableCaching = self.rawFieldOrNull(base, "disableDefaultFunctionCaching")
+    let fields =
+      self.optionalJSONMember("$schema", JSON.encode(schema), schema != "") +
+      [self.jsonMember("name", JSON.encode(name))] +
+      [self.jsonMember("engineVersion", JSON.encode(legacyEngineVersion))] +
+      self.optionalJSONMember("sdk", sdk, legacyRuntime != "") +
+      self.optionalJSONMember(
+        "blueprint",
+        if (blueprint == "null") { "null" } else { self.dependencyJSON(blueprint, true) },
+        blueprint != "null",
+      ) +
+      self.optionalJSONMember("toolchains", self.jsonArray(toolchains), !toolchains.isEmpty) +
+      self.optionalJSONMember("include", self.jsonStringArray(legacyInclude), !legacyInclude.isEmpty) +
+      self.optionalJSONMember("dependencies", self.jsonArray(dependencies), !dependencies.isEmpty) +
+      self.optionalJSONMember("source", JSON.encode(legacyModuleSource), legacyModuleSource != "") +
+      self.optionalJSONMember(
+        "codegen",
+        if (codegen == "null") { "null" } else { self.codegenJSON(codegen) },
+        codegen != "null",
+      ) +
+      self.optionalJSONMember("clients", self.jsonArray(clients), !clients.isEmpty) +
+      self.optionalJSONMember(
+        "disableDefaultFunctionCaching",
+        disableCaching,
+        disableCaching != "null",
+      )
+    self.jsonObject(fields) + "\n"
+  }
+
+  let legacySDKJSON(config: String): String! {
+    let sdk = self.baseSDK(config)
+    let preserve = sdk != "null" and self.sdkSource(sdk) == legacyRuntime and !sdk.hasPrefix("\"")
+    let pin = if (preserve) { self.stringField(sdk, "pin") } else { "" }
+    let sdkConfig = if (preserve) { self.rawField(sdk, "config") } else { null }
+    let debug = if (preserve) { self.booleanField(sdk, "debug") } else { null }
+    let experimental = if (preserve) { self.rawField(sdk, "experimental") } else { null }
+    let fields = [self.jsonMember("source", JSON.encode(legacyRuntime))] +
+      self.optionalJSONMember("pin", JSON.encode(pin), pin != "") +
+      self.optionalJSONMember(
+        "config",
+        if (sdkConfig == null) { "null" } else { self.prettyJSON(sdkConfig) },
+        self.rawObjectNonEmpty(sdkConfig),
+      ) +
+      self.optionalJSONMember("debug", "true", debug == true) +
+      self.optionalJSONMember(
+        "experimental",
+        if (experimental == null) { "null" } else { self.booleanMapJSON(experimental) },
+        self.rawObjectNonEmpty(experimental),
+      )
+    self.jsonObject(fields)
+  }
+
+  let dependencyJSON(dependency: String!, includeLegacyFields: Boolean!): String! {
+    let name = self.dependencyName(dependency)
+    let source = self.dependencySource(dependency)
+    let pin = self.dependencyPin(dependency)
+    let isObject = !dependency.hasPrefix("\"")
+    let customizations = if (includeLegacyFields and isObject) {
+      self.rawListField(dependency, "customizations").filter { raw => raw != "null" }.map { raw =>
+        self.customizationJSON(raw)
+      }
+    } else {
+      [] :: [String!]!
+    }
+    let ignoreChecks = if (includeLegacyFields and isObject) {
+      self.stringListField(dependency, "ignoreChecks")
+    } else {
+      [] :: [String!]!
+    }
+    let ignoreGenerators = if (includeLegacyFields and isObject) {
+      self.stringListField(dependency, "ignoreGenerators")
+    } else {
+      [] :: [String!]!
+    }
+    let ignoreServices = if (includeLegacyFields and isObject) {
+      self.stringListField(dependency, "ignoreServices")
+    } else {
+      [] :: [String!]!
+    }
+    let portMappings = if (includeLegacyFields and isObject) {
+      self.rawField(dependency, "portMappings")
+    } else {
+      null
+    }
+    let fields = [
+      self.jsonMember("name", JSON.encode(name)),
+      self.jsonMember("source", JSON.encode(source)),
+    ] +
+      self.optionalJSONMember("pin", JSON.encode(pin), pin != "") +
+      self.optionalJSONMember("customizations", self.jsonArray(customizations), !customizations.isEmpty) +
+      self.optionalJSONMember("ignoreChecks", self.jsonStringArray(ignoreChecks), !ignoreChecks.isEmpty) +
+      self.optionalJSONMember(
+        "ignoreGenerators",
+        self.jsonStringArray(ignoreGenerators),
+        !ignoreGenerators.isEmpty,
+      ) +
+      self.optionalJSONMember("ignoreServices", self.jsonStringArray(ignoreServices), !ignoreServices.isEmpty) +
+      self.optionalJSONMember(
+        "portMappings",
+        if (portMappings == null) { "null" } else { self.stringListMapJSON(portMappings) },
+        self.rawObjectNonEmpty(portMappings),
+      )
+    self.jsonObject(fields)
+  }
+
+  let customizationJSON(customization: String!): String! {
+    let function = self.stringListField(customization, "function")
+    let argument = self.stringField(customization, "argument")
+    let default = self.stringField(customization, "default")
+    let defaultPath = self.stringField(customization, "defaultPath")
+    let defaultAddress = self.stringField(customization, "defaultAddress")
+    let ignore = self.stringListField(customization, "ignore")
+    let fields =
+      self.optionalJSONMember("function", self.jsonStringArray(function), !function.isEmpty) +
+      [self.jsonMember("argument", JSON.encode(argument))] +
+      self.optionalJSONMember("default", JSON.encode(default), default != "") +
+      self.optionalJSONMember("defaultPath", JSON.encode(defaultPath), defaultPath != "") +
+      self.optionalJSONMember("defaultAddress", JSON.encode(defaultAddress), defaultAddress != "") +
+      self.optionalJSONMember("ignore", self.jsonStringArray(ignore), !ignore.isEmpty)
+    self.jsonObject(fields)
+  }
+
+  let codegenJSON(codegen: String!): String! {
+    let automaticGitignore = self.booleanField(codegen, "automaticGitignore")
+    self.jsonObject(
+      self.optionalJSONMember(
+        "automaticGitignore",
+        if (automaticGitignore == true) { "true" } else { "false" },
+        automaticGitignore != null,
+      ),
+    )
+  }
+
+  let clientJSON(client: String!): String! {
+    self.jsonObject([
+      self.jsonMember("generator", JSON.encode(self.stringField(client, "generator"))),
+      self.jsonMember("directory", JSON.encode(self.stringField(client, "directory"))),
+    ])
+  }
+
+  let booleanMapJSON(raw: String!): String! {
+    let fields = self.sortStrings(self.jsonValue(raw).fields).map { name =>
+      let value = self.booleanField(raw, name) ?? false
+      self.jsonMember(name, if (value) { "true" } else { "false" })
+    }
+    self.jsonObject(fields)
+  }
+
+  let stringListMapJSON(raw: String!): String! {
+    let fields = self.sortStrings(self.jsonValue(raw).fields).map { name =>
+      self.jsonMember(name, if (self.rawFieldOrNull(raw, name) == "null") {
+        "null"
+      } else { self.jsonStringArray(self.stringListField(raw, name)) })
+    }
+    self.jsonObject(fields)
+  }
+
+  let tomlCodegen(config: String): [String!]! {
+    let raw = self.rawFieldOrNull(config, "codegen")
+    if (raw == "null") {
+      []
+    } else {
+      let automaticGitignore = self.booleanField(raw, "automaticGitignore")
+      [
+        "[codegen]" + (if (automaticGitignore == null) {
+          ""
+        } else {
+          "\n  automaticGitignore = " + (if (automaticGitignore) { "true" } else { "false" })
+        }),
+      ]
+    }
+  }
+
+  let tomlClient(client: String!): String! {
+    "[[clients]]\n  generator = " + self.tomlString(self.stringField(client, "generator")) +
+      "\n  directory = " + self.tomlString(self.stringField(client, "directory"))
+  }
+
+  let optionalTOMLString(config: String, field: String!, outputName: String!): [String!]! {
+    let value = self.stringFieldOrEmpty(config, field)
+    if (value == "") { [] } else { [outputName + " = " + self.tomlString(value)] }
+  }
+
+  let optionalTOMLValue(field: String!, value: String!): [String!]! {
+    if (value == "") { [] } else { [field + " = " + self.tomlString(value)] }
+  }
+
+  let optionalTOMLStringList(field: String!, value: [String!]!): [String!]! {
+    if (value.isEmpty) {
+      []
+    } else {
+      [field + " = [" + value.map { item => self.tomlString(item) }.join(", ") + "]"]
+    }
+  }
+
+  let optionalTOMLBoolean(config: String, field: String!): [String!]! {
+    let value = self.booleanFieldOrNull(config, field)
+    if (value == null) {
+      []
+    } else {
+      [field + " = " + (if (value) { "true" } else { "false" })]
+    }
+  }
+
+  let tomlString(value: String!): String! {
+    let encoded = value.split("").map { character =>
+      if (character == "\"" or character == "\\" or
+          character < (JSON.decode("\"\\u001f\"") :: String!)) {
+        let quoted = JSON.encode(character).trimPrefix("\"").trimSuffix("\"")
+        if (quoted.hasPrefix("\\u")) {
+          quoted.replace("a", "A").replace("b", "B").replace("c", "C")
+            .replace("d", "D").replace("e", "E").replace("f", "F")
+        } else { quoted }
+      } else { character }
+    }.join("")
+    "\"" + encoded + "\""
+  }
+
+  let jsonObject(fields: [String!]!): String! {
+    if (fields.isEmpty) { "{}" } else { "{\n" + fields.join(",\n") + "\n}" }
+  }
+
+  let jsonArray(values: [String!]!): String! {
+    if (values.isEmpty) {
+      "[]"
+    } else {
+      "[\n" + values.map { value => "  " + value.replace("\n", "\n  ") }.join(",\n") + "\n]"
+    }
+  }
+
+  let jsonStringArray(values: [String!]!): String! {
+    self.jsonArray(values.map { value => JSON.encode(value) })
+  }
+
+  let jsonMember(name: String!, value: String!): String! {
+    "  " + JSON.encode(name) + ": " + value.replace("\n", "\n  ")
+  }
+
+  let optionalJSONMember(name: String!, value: String!, include: Boolean!): [String!]! {
+    if (include) { [self.jsonMember(name, value)] } else { [] }
+  }
+
+  let prettyJSON(raw: String!): String! {
+    toString(self.jsonValue(raw).contents(pretty: true, indent: "  "))
+  }
+
+  let canonicalJSON(contents: String!): String! {
+    let raw = contents :: Dagger.JSON!
+    let value = Dagger.json.withContents(raw)
+    value.fields
+    toString(value.contents)
+  }
+
+  let jsonValue(contents: String!): Dagger.JSONValue! {
+    Dagger.json.withContents(contents :: Dagger.JSON!)
+  }
+
+  let hasField(config: String!, field: String!): Boolean! {
+    self.jsonValue(config).fields.contains(field)
+  }
+
+  let rawField(config: String!, field: String!): String {
+    let value = self.jsonValue(config)
+    if (value.fields.contains(field)) {
+      toString(value.field([field]).contents)
+    } else {
+      null
+    }
+  }
+
+  let rawFieldOrNull(config: String, field: String!): String! {
+    if (config == null) { "null" } else { self.rawField(config, field) ?? "null" }
+  }
+
+  let rawObjectNonEmpty(raw: String): Boolean! {
+    if (raw == null or raw == "null") {
+      false
+    } else {
+      !self.jsonValue(raw).fields.isEmpty
+    }
+  }
+
+  let stringField(config: String!, field: String!): String! {
+    let raw = self.rawField(config, field)
+    if (raw == null or raw == "null") { "" } else { self.jsonValue(raw).asString }
+  }
+
+  let stringFieldOrEmpty(config: String, field: String!): String! {
+    if (config == null) { "" } else { self.stringField(config, field) }
+  }
+
+  let booleanField(config: String!, field: String!): Boolean {
+    let raw = self.rawField(config, field)
+    if (raw == null or raw == "null") { null } else { self.jsonValue(raw).asBoolean }
+  }
+
+  let booleanFieldOrNull(config: String, field: String!): Boolean {
+    if (config == null) { null } else { self.booleanField(config, field) }
+  }
+
+  let rawListField(config: String!, field: String!): [String!]! {
+    let raw = self.rawField(config, field)
+    if (raw == null or raw == "null") {
+      []
+    } else {
+      self.jsonValue(raw).asArray.{{contents}}.map { value => toString(value.contents) }
+    }
+  }
+
+  let rawListFieldOrEmpty(config: String, field: String!): [String!]! {
+    if (config == null) { [] } else { self.rawListField(config, field) }
+  }
+
+  let stringListField(config: String!, field: String!): [String!]! {
+    self.rawListField(config, field).map { raw =>
+      if (raw == "null") { "" } else { self.jsonValue(raw).asString }
+    }
+  }
+
+  let baseSDK(config: String): String! {
+    if (config == null) {
+      "null"
+    } else {
+      let sdk = self.rawField(config, "sdk")
+      if (sdk != null) { sdk } else { self.rawField(config, "runtime") ?? "null" }
+    }
+  }
+
+  let sdkSource(sdk: String!): String! {
+    if (sdk == "null") {
+      ""
+    } else if (sdk.hasPrefix("\"")) {
+      self.jsonValue(sdk).asString
+    } else {
+      self.stringField(sdk, "source")
+    }
+  }
+
+  let dependencyName(dependency: String!): String! {
+    if (dependency.hasPrefix("\"")) { "" } else { self.stringField(dependency, "name") }
+  }
+
+  let dependencySource(dependency: String!): String! {
+    if (dependency.hasPrefix("\"")) {
+      self.jsonValue(dependency).asString
+    } else {
+      self.stringField(dependency, "source")
+    }
+  }
+
+  let dependencyPin(dependency: String!): String! {
+    if (dependency.hasPrefix("\"")) { "" } else { self.stringField(dependency, "pin") }
+  }
+
+  let dependencyMatches(configured: String!, name: String!, source: String!): Boolean! {
+    self.dependencyName(configured) == name and
+      (name != "" or self.dependencySource(configured) == source)
+  }
+
+  let dependencyKey(dependency: String!): String! {
+    let name = self.dependencyName(dependency)
+    if (name == "") { self.dependencySource(dependency) } else { name }
+  }
+
+  let newDependency(name: String!, source: String!, pin: String!): String! {
+    let fields = [
+      self.jsonMember("name", JSON.encode(name)),
+      self.jsonMember("source", JSON.encode(source)),
+    ] + self.optionalJSONMember("pin", JSON.encode(pin), pin != "")
+    toString(self.jsonValue(self.jsonObject(fields)).contents)
+  }
+
+  let sortDependencies(dependencies: [String!]!): [String!]! {
+    dependencies.reduce([] :: [String!]!) { sorted, dependency =>
+      let key = self.dependencyKey(dependency)
+      let before = sorted.filter { configured => self.dependencyKey(configured) <= key }
+      let after = sorted.reject { configured => self.dependencyKey(configured) <= key }
+      before + [dependency] + after
+    }
+  }
+
+  let sortStrings(values: [String!]!): [String!]! {
+    values.reduce([] :: [String!]!) { sorted, value =>
+      let before = sorted.filter { configured => configured < value }
+      let after = sorted.reject { configured => configured < value }
+      before + [value] + after
+    }
+  }
+
+  let isBuiltinRuntime(runtime: String!): Boolean! {
+    ["go", "dang", "python", "typescript", "php", "elixir", "java"].contains(runtime)
+  }
+
+  let currentEngineVersion: String! {
+    Dagger.version.split("+")[0] ?? Dagger.version
+  }
+
+  let normalizeEngineVersion(version: String!): String! {
+    let requested = if (version == "latest" or version == "current" or version == "") {
+      self.currentEngineVersion
+    } else {
+      version
+    }
+    self.normalizeVersion(requested)
+  }
+
+  let normalizeVersion(version: String!): String! {
+    let requested = if (version == "") { self.currentEngineVersion } else { version }
+    let cleaned = if (self.validSemver("v" + requested)) { "v" + requested } else { requested }
+    if (self.validSemver(cleaned)) { cleaned } else { "v0.11.9" }
+  }
+
+  let validSemver(version: String!): Boolean! {
+    version.containsMatch(
+      Regexp(
+        "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)" +
+          "(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)" +
+          "(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?" +
+          "(\\+([0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*))?$" +
+          "|^v(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*))?$",
+      ),
+    )
+  }
+
+  let versionAtMost(required: String!, maximum: String!): Boolean! {
+    if (!self.validSemver(required)) {
+      true
+    } else if (!self.validSemver(maximum)) {
+      false
+    } else {
+      let requiredParts = self.baseVersion(required).trimPrefix("v").split(".")
+      let maximumParts = self.baseVersion(maximum).trimPrefix("v").split(".")
+      let major = self.compareNumericStrings(requiredParts[0] ?? "0", maximumParts[0] ?? "0")
+      let minor = self.compareNumericStrings(requiredParts[1] ?? "0", maximumParts[1] ?? "0")
+      let patch = self.compareNumericStrings(requiredParts[2] ?? "0", maximumParts[2] ?? "0")
+      major < 0 or (major == 0 and (minor < 0 or (minor == 0 and patch <= 0)))
+    }
+  }
+
+  let baseVersion(version: String!): String! {
+    let withoutBuild = version.split("+")[0] ?? version
+    withoutBuild.split("-")[0] ?? withoutBuild
+  }
+
+  let compareNumericStrings(left: String!, right: String!): Int! {
+    if (left.split("").length < right.split("").length) {
+      -1
+    } else if (left.split("").length > right.split("").length) {
+      1
+    } else if (left < right) {
+      -1
+    } else if (left > right) {
+      1
+    } else {
+      0
+    }
+  }
+}

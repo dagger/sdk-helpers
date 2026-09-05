@@ -1,0 +1,11 @@
+name = "current-name"
+source = "."
+engineVersion = "v0.20.3"
+
+[runtime]
+  source = "go"
+
+[[dependencies]]
+  name = "keep"
+  source = "github.com/example/keep"
+  pin = "sha256:old"

@@ -1,0 +1,11 @@
+{
+  "name": "legacy-name",
+  "engineVersion": "v0.20.3",
+  "sdk": {
+    "source": "go",
+    "config": {"legacy": true}
+  },
+  "dependencies": [
+    {"name": "stale", "source": "github.com/example/stale"}
+  ]
+}

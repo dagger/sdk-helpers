@@ -1,0 +1,65 @@
+{
+  "$schema": "https://example.com/schema.json",
+  "name": "legacy-name",
+  "engineVersion": "v0.20.3",
+  "sdk": {
+    "source": "go",
+    "pin": "sha256:sdk",
+    "config": {
+      "zeta": ["last", 2],
+      "alpha": {"enabled": true}
+    },
+    "debug": true,
+    "experimental": {
+      "zeta": false,
+      "alpha": true
+    }
+  },
+  "blueprint": {
+    "name": "blueprint",
+    "source": "github.com/example/blueprint",
+    "pin": "sha256:blueprint",
+    "customizations": [
+      {
+        "function": ["build", "run"],
+        "argument": "source",
+        "default": ".",
+        "defaultPath": "src",
+        "defaultAddress": "alpine",
+        "ignore": ["tmp/**"]
+      }
+    ],
+    "ignoreChecks": ["lint"],
+    "ignoreGenerators": ["docs"],
+    "ignoreServices": ["db"],
+    "portMappings": {
+      "web": ["8080:80"],
+      "db": ["5432:5432"]
+    }
+  },
+  "toolchains": [
+    {"name": "tools", "source": "github.com/example/tools"}
+  ],
+  "include": ["src/**"],
+  "dependencies": [
+    "string-dependency",
+    {
+      "name": "object-dependency",
+      "source": "github.com/example/object",
+      "pin": "sha256:object",
+      "customizations": [{"argument": "mode", "default": "fast"}],
+      "ignoreChecks": ["slow"],
+      "ignoreGenerators": ["client"],
+      "ignoreServices": ["cache"],
+      "portMappings": {"api": ["9090:90"]}
+    }
+  ],
+  "source": "./src",
+  "codegen": {"automaticGitignore": false},
+  "exclude": ["vendor/**", "!keep/**", ""],
+  "clients": [
+    {"generator": "go", "directory": "./client"}
+  ],
+  "disableDefaultFunctionCaching": false,
+  "unknown": "drop"
+}
