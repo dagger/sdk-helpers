@@ -140,7 +140,8 @@ type ModuleManifest {
   }
 
   """Add the legacy PHP runtime."""
-  withLegacyPHPRuntime(
+  # Separate acronym letters to preserve the public GraphQL name.
+  withLegacyP_H_P_Runtime(
     """Module source path. The default is the manifest directory."""
     moduleSource: String = null,
     """Required engine API version. The default is the running engine version."""
@@ -249,7 +250,8 @@ type ModuleManifest {
   }
 
   """Serialize the legacy fields as dagger.json."""
-  legacyJSONFile: File! {
+  # Separate acronym letters to preserve the public GraphQL name.
+  legacyJ_S_O_N_File: File! {
     validate
     if (legacyRuntime == "" and !loadedLegacyJSON) {
       raise "module manifest has no legacy runtime"
@@ -358,7 +360,7 @@ type ModuleManifest {
     }
     let sdk = self.baseSDK(config)
     self.legacyRuntime = self.sdkSource(sdk)
-    if (legacyRuntime != "" and legacyModuleSource == "") {
+    if (self.sdkSource(sdk) != "" and self.stringField(config, "source") == "") {
       self.legacyModuleSource = "."
     }
     self
