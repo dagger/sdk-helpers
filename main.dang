@@ -3,11 +3,11 @@ type SdkHelpers {
   """Construct or load a module manifest."""
   moduleManifest(
     """Optional dagger-module.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
     """Optional dagger.json file to load."""
-    loadJSON: File = null,
+    loadJson: File = null,
   ): ModuleManifest! {
-    ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
+    ModuleManifest(loadToml: loadToml, loadJson: loadJson)
   }
 }
 
@@ -27,19 +27,19 @@ type ModuleManifest {
 
   new(
     """Optional dagger-module.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
     """Optional dagger.json file to load."""
-    loadJSON: File = null,
+    loadJson: File = null,
   ) {
-    let withJSON = if (loadJSON == null) {
+    let withJSON = if (loadJson == null) {
       self
     } else {
-      self.loadJSON(loadJSON.contents)
+      self.loadJSON(loadJson.contents)
     }
-    if (loadTOML == null) {
+    if (loadToml == null) {
       withJSON
     } else {
-      withJSON.loadTOML(loadTOML.contents)
+      withJSON.loadTOML(loadToml.contents)
     }
   }
 
@@ -812,7 +812,11 @@ type ModuleManifest {
 
   let stringField(config: String!, field: String!): String! {
     let raw = self.rawField(config, field)
-    if (raw == null or raw == "null") { "" } else { self.jsonValue(raw).asString }
+    if (raw == null or raw == "null") {
+      ""
+    } else if (!raw.hasPrefix("\"")) {
+      raise "field " + JSON.encode(field) + " must be a string"
+    } else { self.jsonValue(raw).asString }
   }
 
   let stringFieldOrEmpty(config: String, field: String!): String! {
@@ -821,7 +825,11 @@ type ModuleManifest {
 
   let booleanField(config: String!, field: String!): Boolean {
     let raw = self.rawField(config, field)
-    if (raw == null or raw == "null") { null } else { self.jsonValue(raw).asBoolean }
+    if (raw == null or raw == "null") {
+      null
+    } else if (raw != "true" and raw != "false") {
+      raise "field " + JSON.encode(field) + " must be a boolean"
+    } else { raw == "true" }
   }
 
   let booleanFieldOrNull(config: String, field: String!): Boolean {
@@ -832,6 +840,8 @@ type ModuleManifest {
     let raw = self.rawField(config, field)
     if (raw == null or raw == "null") {
       []
+    } else if (!raw.hasPrefix("[")) {
+      raise "field " + JSON.encode(field) + " must be an array"
     } else {
       self.jsonValue(raw).asArray.{{contents}}.map { value => toString(value.contents) }
     }
@@ -842,8 +852,12 @@ type ModuleManifest {
   }
 
   let stringListField(config: String!, field: String!): [String!]! {
-    self.rawListField(config, field).map { raw =>
-      if (raw == "null") { "" } else { self.jsonValue(raw).asString }
+    self.rawListField(config, field).map { raw, index =>
+      if (raw == "null") {
+        ""
+      } else if (!raw.hasPrefix("\"")) {
+        raise "field " + JSON.encode(field + "[" + toString(index) + "]") + " must be a string"
+      } else { self.jsonValue(raw).asString }
     }
   }
 
@@ -901,19 +915,41 @@ type ModuleManifest {
   }
 
   let sortDependencies(dependencies: [String!]!): [String!]! {
-    dependencies.reduce([] :: [String!]!) { sorted, dependency =>
-      let key = self.dependencyKey(dependency)
-      let before = sorted.filter { configured => self.dependencyKey(configured) <= key }
-      let after = sorted.reject { configured => self.dependencyKey(configured) <= key }
-      before + [dependency] + after
-    }
+    # Read each key once. Comparisons below do not call the Dagger API.
+    let entries = dependencies.map { dependency => [self.dependencyKey(dependency), dependency] }
+    self.sortEntries(entries).map { entry => entry[1] ?? "" }
   }
 
   let sortStrings(values: [String!]!): [String!]! {
-    values.reduce([] :: [String!]!) { sorted, value =>
-      let before = sorted.filter { configured => configured < value }
-      let after = sorted.reject { configured => configured < value }
-      before + [value] + after
+    self.sortEntries(values.map { value => [value, value] }).map { entry => entry[1] ?? "" }
+  }
+
+  # Stable merge sort over [key, value] pairs.
+  let sortEntries(entries: [[String!]!]!): [[String!]!]! {
+    if (entries.length < 2) {
+      entries
+    } else {
+      let middle = entries.length / 2
+      let left = self.sortEntries(entries.takeFirst(middle))
+      let right = self.sortEntries(entries.dropFirst(middle))
+      let sorted: [[String!]!]! = []
+      let i = 0
+      let j = 0
+      loop {
+        if (i >= left.length or j >= right.length) {
+          break
+        }
+        let a = left[i] ?? []
+        let b = right[j] ?? []
+        if ((a[0] ?? "") <= (b[0] ?? "")) {
+          sorted += [a]
+          i += 1
+        } else {
+          sorted += [b]
+          j += 1
+        }
+      }
+      sorted + left.dropFirst(i) + right.dropFirst(j)
     }
   }
 

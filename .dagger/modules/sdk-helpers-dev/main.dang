@@ -1,0 +1,1104 @@
+"""Checks for the SDK helpers module."""
+type SdkHelpersDev {
+  """Check toml-contents."""
+  testTomlContents(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyInclude(path: "**/*.go")
+      .withLegacyInclude(path: "go.mod")
+    self.checkFiles(ws, "toml-contents", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check json-contents."""
+  testJsonContents(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withModuleEntrypoint(source: "./entrypoint")
+      .withLegacyPythonRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyInclude(path: "src/**")
+    self.checkFiles(ws, "json-contents", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Go."""
+  testRuntimeGo(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Go", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Dang."""
+  testRuntimeDang(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyDangRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Dang", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Python."""
+  testRuntimePython(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyPythonRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Python", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Typescript."""
+  testRuntimeTypescript(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyTypescriptRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Typescript", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-PHP."""
+  testRuntimePHP(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyPHPRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-PHP", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Elixir."""
+  testRuntimeElixir(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyElixirRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Elixir", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check runtime-Java."""
+  testRuntimeJava(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyJavaRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "runtime-Java", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check without-legacy-fields."""
+  testWithoutLegacyFields(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyInclude(path: "go.mod")
+      .withLegacyRuntimeDependency(name: "dep", source: "./dep", pin: "")
+      .withoutLegacyFields
+    self.checkFiles(ws, "without-legacy-fields", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check replace-runtime."""
+  testReplaceRuntime(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyPythonRuntime(moduleSource: "./python", engineVersion: "v0.21.0")
+    self.checkFiles(ws, "replace-runtime", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check reset-runtime."""
+  testResetRuntime(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyPythonRuntime(moduleSource: "./python", engineVersion: "v0.21.0")
+      .withLegacyDangRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "reset-runtime", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check replace-entrypoint."""
+  testReplaceEntrypoint(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withModuleEntrypoint(source: "./entrypoint")
+    self.checkFiles(ws, "replace-entrypoint", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check load-json."""
+  testLoadJson(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/dagger.json"))
+    self.checkFiles(ws, "load-json", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check update-json."""
+  testUpdateJson(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/dagger.json"))
+      .withName(name: "updated-name")
+      .withoutLegacyRuntimeDependencies
+      .withLegacyRuntimeDependency(name: "client", source: "./client", pin: "sha256:new")
+    self.checkFiles(ws, "update-json", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check remove-json."""
+  testRemoveJson(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/dagger.json"))
+      .withoutLegacyRuntimeDependency(name: "keep")
+    self.checkFiles(ws, "remove-json", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check strip-json."""
+  testStripJson(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/dagger.json"))
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withoutLegacyFields
+    self.checkFiles(ws, "strip-json", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check load-toml."""
+  testLoadToml(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"))
+    self.checkFiles(ws, "load-toml", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check update-toml."""
+  testUpdateToml(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"))
+      .withName(name: "updated-name")
+      .withoutLegacyRuntimeDependencies
+      .withLegacyRuntimeDependency(name: "client", source: "./client", pin: "sha256:new")
+    self.checkFiles(ws, "update-toml", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check remove-toml."""
+  testRemoveToml(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"))
+      .withoutLegacyRuntimeDependency(name: "keep")
+    self.checkFiles(ws, "remove-toml", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check strip-toml."""
+  testStripToml(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"))
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withoutLegacyFields
+    self.checkFiles(ws, "strip-toml", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check load-both."""
+  testLoadBoth(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"), loadJson: ws.file("/testdata/dagger.json"))
+    self.checkFiles(ws, "load-both", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check update-both."""
+  testUpdateBoth(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"), loadJson: ws.file("/testdata/dagger.json"))
+      .withName(name: "updated-name")
+      .withoutLegacyRuntimeDependencies
+      .withLegacyRuntimeDependency(name: "client", source: "./client", pin: "sha256:new")
+    self.checkFiles(ws, "update-both", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check remove-both."""
+  testRemoveBoth(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"), loadJson: ws.file("/testdata/dagger.json"))
+      .withoutLegacyRuntimeDependency(name: "keep")
+    self.checkFiles(ws, "remove-both", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check strip-both."""
+  testStripBoth(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: ws.file("/testdata/dagger-module.toml"), loadJson: ws.file("/testdata/dagger.json"))
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withoutLegacyFields
+    self.checkFiles(ws, "strip-both", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check load-full."""
+  testLoadFull(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/full-dagger.json"))
+    self.checkFiles(ws, "load-full", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check update-full."""
+  testUpdateFull(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/full-dagger.json"))
+      .withName(name: "updated-name")
+      .withoutLegacyRuntimeDependencies
+      .withLegacyRuntimeDependency(name: "client", source: "./client", pin: "sha256:new")
+    self.checkFiles(ws, "update-full", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check remove-full."""
+  testRemoveFull(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/full-dagger.json"))
+      .withoutLegacyRuntimeDependency(name: "keep")
+    self.checkFiles(ws, "remove-full", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check strip-full."""
+  testStripFull(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/full-dagger.json"))
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+      .withoutLegacyFields
+    self.checkFiles(ws, "strip-full", manifest.directory, manifest.tomlFile, null)
+    null
+  }
+
+  """Check full-update."""
+  testFullUpdate(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: ws.file("/testdata/full-dagger.json"))
+      .withName(name: "updated-name")
+      .withoutLegacyRuntimeDependency(name: "string-dependency")
+      .withLegacyRuntimeDependency(name: "client", source: "./client", pin: "sha256:new")
+    self.checkFiles(ws, "full-update", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check external-runtime."""
+  testExternalRuntime(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"external-runtime\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"github.com/example/sdk@v1.2.3\"}"))
+    self.checkFiles(ws, "external-runtime", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check old-forms."""
+  testOldForms(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[\"z\",null,\"a\"],\"include\":[\"src\"],\"exclude\":[\"tmp\",\"!keep\",\"\"]}"))
+    self.checkFiles(ws, "old-forms", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check loaded-json-without-runtime."""
+  testLoadedJsonWithoutRuntime(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"current\"}"))
+      .withDangEntrypoint(source: "./internal/dagger/main.dang")
+    self.checkFiles(ws, "loaded-json-without-runtime", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check toml-runtime-ignored-fields."""
+  testTomlRuntimeIgnoredFields(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"test\"\nengineVersion=\"v0.20.3\"\n[runtime]\nsource=\"go\"\ndebug=true\nconfig={key=\"value\"}\nexperimental={x=true}\n"))
+    self.checkFiles(ws, "toml-runtime-ignored-fields", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check null-fields."""
+  testNullFields(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"nulls\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":\"go\",\"config\":null,\"experimental\":{\"x\":null}},\"include\":[null,\"a\"],\"dependencies\":[{\"source\":\"dep\",\"portMappings\":{\"x\":null,\"y\":[]}}]}"))
+    self.checkFiles(ws, "null-fields", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check empty-codegen."""
+  testEmptyCodegen(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"test\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"codegen\":{},\"clients\":[null,{}]}"))
+    self.checkFiles(ws, "empty-codegen", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-0.20.3."""
+  testVersionWithoutPrefix(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "0.20.3")
+    self.checkFiles(ws, "version-0.20.3", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v0.20.3."""
+  testVersionWithPrefix(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v0.20.3")
+    self.checkFiles(ws, "version-v0.20.3", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-0."""
+  testVersionMajorZero(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "0")
+    self.checkFiles(ws, "version-0", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v0."""
+  testVersionPrefixedMajorZero(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v0")
+    self.checkFiles(ws, "version-v0", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-0.20."""
+  testVersionMajorMinor(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "0.20")
+    self.checkFiles(ws, "version-0.20", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v0.20."""
+  testVersionPrefixedMajorMinor(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v0.20")
+    self.checkFiles(ws, "version-v0.20", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v1."""
+  testVersionMajorOne(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1")
+    self.checkFiles(ws, "version-v1", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-1.2."""
+  testVersionOneTwo(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "1.2")
+    self.checkFiles(ws, "version-1.2", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v1.2.3-rc.1+build.42."""
+  testVersionPrereleaseBuild(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3-rc.1+build.42")
+    self.checkFiles(ws, "version-v1.2.3-rc.1+build.42", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-latest."""
+  testVersionLatest(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "latest")
+    self.checkFiles(ws, "version-latest", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-current."""
+  testVersionCurrent(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "current")
+    self.checkFiles(ws, "version-current", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-."""
+  testVersionEmpty(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "")
+    self.checkFiles(ws, "version-", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-dev."""
+  testVersionDev(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "dev")
+    self.checkFiles(ws, "version-dev", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v01.2.3."""
+  testVersionLeadingZero(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v01.2.3")
+    self.checkFiles(ws, "version-v01.2.3", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v1.2.3-01."""
+  testVersionPrereleaseLeadingZero(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3-01")
+    self.checkFiles(ws, "version-v1.2.3-01", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check version-v1.2.3+01."""
+  testVersionBuildLeadingZero(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3+01")
+    self.checkFiles(ws, "version-v1.2.3+01", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check target-v1.2.3-rc.1-1.2.3-alpha."""
+  testTargetV123Rc1123Alpha(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3-rc.1")
+      .validate(targetEngineVersion: "1.2.3-alpha")
+    null
+  }
+
+  """Check target-v1.2.3-v1.2.3-dev+x."""
+  testTargetV123V123DevX(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3")
+      .validate(targetEngineVersion: "v1.2.3-dev+x")
+    null
+  }
+
+  """Check target-v1.2.3-v1.2.2."""
+  testTargetV123V122(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1.2.3")
+        .validate(targetEngineVersion: "v1.2.2")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy runtime requires dagger v1.2.3, but target engine is v1.2.2")) }
+    null
+  }
+
+  """Check target-v1-v1.0.0."""
+  testTargetV1V100(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v1")
+      .validate(targetEngineVersion: "v1.0.0")
+    null
+  }
+
+  """Check target-v0.20.3-latest."""
+  testTargetV0203Latest(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v0.20.3")
+      .validate(targetEngineVersion: "latest")
+    null
+  }
+
+  """Check target-v0.20.3-current."""
+  testTargetV0203Current(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "", engineVersion: "v0.20.3")
+      .validate(targetEngineVersion: "current")
+    null
+  }
+
+  """Check loaded-version-0.20.3."""
+  testLoadedVersion0203(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"0.20.3\"}"))
+      .validate(targetEngineVersion: "v0.1.0")
+    null
+  }
+
+  """Check loaded-version-v0.20."""
+  testLoadedVersionV020(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"v0.20\"}"))
+        .validate(targetEngineVersion: "v0.1.0")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy runtime requires dagger v0.20, but target engine is v0.1.0")) }
+    null
+  }
+
+  """Check loaded-version-dev."""
+  testLoadedVersionDev(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"dev\"}"))
+      .validate(targetEngineVersion: "v0.1.0")
+    null
+  }
+
+  """Check loaded-version-latest."""
+  testLoadedVersionLatest(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"latest\"}"))
+      .validate(targetEngineVersion: "v0.1.0")
+    null
+  }
+
+  """Check loaded-version-current."""
+  testLoadedVersionCurrent(ws: Workspace!): Void @check {
+    sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"current\"}"))
+      .validate(targetEngineVersion: "v0.1.0")
+    null
+  }
+
+  """Check loaded-version-v999.0.0."""
+  testLoadedVersionV99900(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"v999.0.0\"}"))
+        .validate(targetEngineVersion: "v0.1.0")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger.json: module requires dagger v999.0.0, but you have ${ENGINE_VERSION}")) }
+    null
+  }
+
+  """Check validation-name."""
+  testValidationName(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest name is required")) }
+    null
+  }
+
+  """Check validation-loading-path."""
+  testValidationLoadingPath(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest requires an entrypoint or legacy runtime")) }
+    null
+  }
+
+  """Check validation-partial-entrypoint."""
+  testValidationPartialEntrypoint(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .withDangEntrypoint(source: "")
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest entrypoint kind and source must be set together")) }
+    null
+  }
+
+  """Check validation-entrypoint-kind."""
+  testValidationEntrypointKind(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"hello\"\n[entrypoint]\nkind=\"other\"\nsource=\".\""))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest entrypoint kind must be dang or module")) }
+    null
+  }
+
+  """Check validation-engine-version."""
+  testValidationEngineVersion(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"hello\",\"sdk\":\"go\"}"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy engine version is required")) }
+    null
+  }
+
+  """Check validation-orphan-include."""
+  testValidationOrphanInclude(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .withDangEntrypoint(source: "./internal/dagger/main.dang")
+        .withLegacyInclude(path: "src/**")
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy runtime is required when legacy fields are set")) }
+    null
+  }
+
+  """Check validation-orphan-dependency."""
+  testValidationOrphanDependency(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .withDangEntrypoint(source: "./internal/dagger/main.dang")
+        .withLegacyRuntimeDependency(name: "dep", source: "./dep", pin: "")
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy runtime is required when legacy fields are set")) }
+    null
+  }
+
+  """Check validation-orphan-source."""
+  testValidationOrphanSource(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"hello\"\nsource=\"./src\"\n[entrypoint]\nkind=\"dang\"\nsource=\".\""))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest legacy runtime is required when legacy fields are set")) }
+    null
+  }
+
+  """Check validation-no-legacy-json."""
+  testValidationNoLegacyJson(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest
+        .withName(name: "payments")
+        .withDangEntrypoint(source: "./internal/dagger/main.dang")
+        .legacyJSONFile
+        .contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("module manifest has no legacy runtime")) }
+    null
+  }
+
+  """Check validation-toml-sdk."""
+  testValidationTomlSdk(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[sdk]\nsource=\"go\""))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml uses runtime instead of sdk")) }
+    null
+  }
+
+  """Check validation-toml-blueprint."""
+  testValidationTomlBlueprint(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\nblueprint=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml does not support \"blueprint\"")) }
+    null
+  }
+
+  """Check validation-toml-toolchains."""
+  testValidationTomlToolchains(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\ntoolchains=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml does not support \"toolchains\"")) }
+    null
+  }
+
+  """Check validation-toml-dep-customizations."""
+  testValidationTomlDepCustomizations(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[[dependencies]]\nsource=\"dep\"\ncustomizations=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml dependency 0 does not support \"customizations\"")) }
+    null
+  }
+
+  """Check validation-toml-dep-ignoreChecks."""
+  testValidationTomlDepIgnoreChecks(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[[dependencies]]\nsource=\"dep\"\nignoreChecks=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml dependency 0 does not support \"ignoreChecks\"")) }
+    null
+  }
+
+  """Check validation-toml-dep-ignoreGenerators."""
+  testValidationTomlDepIgnoreGenerators(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[[dependencies]]\nsource=\"dep\"\nignoreGenerators=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml dependency 0 does not support \"ignoreGenerators\"")) }
+    null
+  }
+
+  """Check validation-toml-dep-ignoreServices."""
+  testValidationTomlDepIgnoreServices(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[[dependencies]]\nsource=\"dep\"\nignoreServices=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml dependency 0 does not support \"ignoreServices\"")) }
+    null
+  }
+
+  """Check validation-toml-dep-portMappings."""
+  testValidationTomlDepPortMappings(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "name=\"x\"\n[[dependencies]]\nsource=\"dep\"\nportMappings=[]"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger-module.toml: dagger-module.toml dependency 0 does not support \"portMappings\"")) }
+    null
+  }
+
+  """Check validation-json-runtime."""
+  testValidationJsonRuntime(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"x\",\"runtime\":null}"))
+        .validate(targetEngineVersion: "")
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains(self.engineVersion("load dagger.json: dagger.json uses sdk instead of runtime")) }
+    null
+  }
+
+  """Check dependency-replace-keeps-order."""
+  testDependencyReplaceKeepsOrder(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"v0.20.3\", \"dependencies\": [{\"name\": \"z\", \"source\": \"z\"}, {\"name\": \"a\", \"source\": \"a\"}]}"))
+      .withLegacyRuntimeDependency(name: "z", source: "new", pin: "pin")
+    self.checkFiles(ws, "dependency-replace-keeps-order", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check dependency-add-sorts."""
+  testDependencyAddSorts(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"test\", \"sdk\": \"go\", \"engineVersion\": \"v0.20.3\", \"dependencies\": [{\"name\": \"z\", \"source\": \"z\"}, {\"name\": \"a\", \"source\": \"a\"}]}"))
+      .withLegacyRuntimeDependency(name: "b", source: "b", pin: "")
+    self.checkFiles(ws, "dependency-add-sorts", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check dependency-tied-keys."""
+  testDependencyTiedKeys(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyRuntimeDependency(name: "", source: "a", pin: "")
+      .withLegacyRuntimeDependency(name: "a", source: "b", pin: "")
+    self.checkFiles(ws, "dependency-tied-keys", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check dependency-unnamed-replace."""
+  testDependencyUnnamedReplace(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyRuntimeDependency(name: "", source: "a", pin: "old")
+      .withLegacyRuntimeDependency(name: "", source: "a", pin: "new")
+    self.checkFiles(ws, "dependency-unnamed-replace", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check dependency-unnamed-remove."""
+  testDependencyUnnamedRemove(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyRuntimeDependency(name: "", source: "a", pin: "")
+      .withoutLegacyRuntimeDependency(name: "a")
+    self.checkFiles(ws, "dependency-unnamed-remove", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check dependency-empty-name-remove."""
+  testDependencyEmptyNameRemove(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "payments")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withLegacyRuntimeDependency(name: "", source: "a", pin: "")
+      .withLegacyRuntimeDependency(name: "", source: "b", pin: "")
+      .withoutLegacyRuntimeDependency(name: "")
+    self.checkFiles(ws, "dependency-empty-name-remove", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check escape html."""
+  testEscapeHtml(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "<tag>&  ")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withDangEntrypoint(source: "<tag>&  ")
+      .withLegacyInclude(path: "<tag>&  ")
+      .withLegacyRuntimeDependency(name: "<tag>&  ", source: "<tag>&  ", pin: "<tag>&  ")
+    self.checkFiles(ws, "escape-'<tag>&\\u2028\\u2029'", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check escape whitespace."""
+  testEscapeWhitespace(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "quote\"\\\n\t\r\b\f")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withDangEntrypoint(source: "quote\"\\\n\t\r\b\f")
+      .withLegacyInclude(path: "quote\"\\\n\t\r\b\f")
+      .withLegacyRuntimeDependency(name: "quote\"\\\n\t\r\b\f", source: "quote\"\\\n\t\r\b\f", pin: "quote\"\\\n\t\r\b\f")
+    self.checkFiles(ws, "escape-'quote\"\\\\\\n\\t\\r\\x08\\x0c'", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check escape-controls."""
+  testEscapeControls(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\\u007f\", \"sdk\": \"go\", \"engineVersion\": \"v0.20.3\", \"include\": [\"\\u0000\\u000b\\u000e\\u001e\\u001f\\u007f\"], \"dependencies\": [{\"name\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\\u007f\", \"source\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\\u007f\", \"pin\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\\u007f\"}]}"))
+    self.checkFiles(ws, "escape-controls", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check escape unicode."""
+  testEscapeUnicode(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest
+      .withName(name: "é漢字😀")
+      .withLegacyGoRuntime(moduleSource: "./src", engineVersion: "v0.20.3")
+      .withDangEntrypoint(source: "é漢字😀")
+      .withLegacyInclude(path: "é漢字😀")
+      .withLegacyRuntimeDependency(name: "é漢字😀", source: "é漢字😀", pin: "é漢字😀")
+    self.checkFiles(ws, "escape-'é漢字😀'", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Check sdk-number-format."""
+  testSdkNumberFormat(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":\"numbers\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":\"go\",\"config\":{\"big\":9007199254740993,\"tiny\":1e-7,\"large\":1e21,\"whole\":1.0,\"negativeZero\":-0.0}}}"))
+    self.checkFiles(ws, "sdk-number-format", manifest.directory, manifest.tomlFile, manifest.legacyJSONFile)
+    null
+  }
+
+  """Keep builder branches independent."""
+  testImmutableBranches(ws: Workspace!): Void @check {
+    let base = sdkHelpers.moduleManifest
+      .withName("base")
+      .withDangEntrypoint("./main.dang")
+    let left = base.withName("left").withLegacyGoRuntime(engineVersion: "v0.21.9")
+    let right = base.withName("right").withModuleEntrypoint("./module")
+    assert { base.tomlFile.contents == "name = \"base\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./main.dang\"\n" }
+    assert { left.tomlFile.contents.contains("name = \"left\"\n") }
+    assert { left.directory.entries.length == 2 }
+    assert { right.tomlFile.contents == "name = \"right\"\n\n[entrypoint]\n  kind = \"module\"\n  source = \"./module\"\n" }
+    assert { right.directory.entries.length == 1 }
+    assert { base.directory.entries.length == 1 }
+    null
+  }
+
+  """Match manifest field names by case."""
+  testCaseSensitiveFields(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
+      "{\"name\":\"case\",\"sdk\":\"go\",\"engineVersion\":\"v0.21.9\",\"Include\":[\"wrong/**\"],\"include\":[\"right/**\"]}"
+    ))
+    let contents = manifest.legacyJSONFile.contents
+    assert { contents.contains("right/**") }
+    assert { !contents.contains("wrong/**") }
+    null
+  }
+
+  """Identify an invalid string field."""
+  testInvalidStringField(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"name\":123}"))
+        .tomlFile.contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains("load dagger.json: field \"name\" must be a string") }
+    null
+  }
+
+  """Identify an invalid boolean field."""
+  testInvalidBooleanField(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"codegen\":{\"automaticGitignore\":\"yes\"}}"))
+        .tomlFile.contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains("load dagger.json: field \"automaticGitignore\" must be a boolean") }
+    null
+  }
+
+  """Identify an invalid array field."""
+  testInvalidArrayField(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"include\":\"src/**\"}"))
+        .tomlFile.contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains("load dagger.json: field \"include\" must be an array") }
+    null
+  }
+
+  """Identify an invalid array item."""
+  testInvalidArrayItem(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", "{\"include\":[123]}"))
+        .tomlFile.contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains("load dagger.json: field \"include[0]\" must be a string") }
+    null
+  }
+
+  """Identify an invalid TOML field."""
+  testInvalidTomlField(ws: Workspace!): Void @check {
+    let message = {
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", "include = [123]\n"))
+        .tomlFile.contents
+      ""
+    } rescue { error: Error => error.message }
+    assert { message.contains("load dagger-module.toml: field \"include[0]\" must be a string") }
+    null
+  }
+
+  """Keep input order for equal dependency keys."""
+  testStableDependencyTies(ws: Workspace!): Void @check {
+    let manifest = sdkHelpers.moduleManifest(
+      loadJson: ws.file("/.dagger/modules/sdk-helpers-dev/testdata/tied-dependencies.json"),
+    ).withLegacyRuntimeDependency(name: "z", source: "new")
+    let dependencies = Dagger.json.withContents(manifest.legacyJSONFile.contents :: Dagger.JSON!)
+      .field(["dependencies"]).asArray.{{contents}}
+    assert {
+      dependencies.map { dependency => Dagger.json.withContents(dependency.contents).field(["source"]).asString } ==
+        ["a", "named-a", "named-b", "b", "named-c", "c", "named-d", "d", "named-e", "e", "f", "named-f", "new"]
+    }
+    null
+  }
+
+  """Sort 100 loaded dependencies when adding a dependency."""
+  testManyDependencies(ws: Workspace!): Void @check {
+    let input = ws.file("/.dagger/modules/sdk-helpers-dev/testdata/many-dependencies.json")
+    let before = Dagger.json.withContents(input.contents :: Dagger.JSON!)
+      .field(["dependencies"]).asArray.{{contents}}.map { dependency => Dagger.json.withContents(dependency.contents).field(["source"]).asString }
+    let manifest = sdkHelpers.moduleManifest(loadJson: input)
+      .withLegacyRuntimeDependency(name: "added", source: "./added")
+    let dependencies = Dagger.json.withContents(manifest.legacyJSONFile.contents :: Dagger.JSON!)
+      .field(["dependencies"]).asArray.{{contents}}
+    let names = dependencies.map { dependency => Dagger.json.withContents(dependency.contents).field(["name"]).asString }
+    let sources = dependencies.map { dependency => Dagger.json.withContents(dependency.contents).field(["source"]).asString }
+    assert { names.length == 101 }
+    assert { names[0] == "added" }
+    assert { sources.contains("./added") }
+    before.map { source =>
+      assert { sources.contains(source) }
+      null
+    }
+    names.dropFirst(1).map { name, index =>
+      assert { (names[index] ?? "") <= name }
+      null
+    }
+    null
+  }
+
+  """Keep helper state private and preserve the public API."""
+  testPublicApi(ws: Workspace!): Void @check {
+    let dependency = Dagger.currentModule.dependencies.{{id}}[0]
+    if (dependency == null) {
+      raise "sdk-helpers dependency is missing"
+    } else {
+      let module = Dagger.loadModuleFromID(toString(dependency.id) :: Dagger.ModuleID!)
+      assert { module.name == "sdk-helpers" }
+      assert { module.objects.{{id}}.length == 2 }
+      module.objects.{{id}}.map { typeDef =>
+        let object = Dagger.loadTypeDefFromID(toString(typeDef.id) :: Dagger.TypeDefID!).asObject
+        if (object == null) {
+          raise "expected an object type"
+        } else {
+          assert { object.fields.{{name}}.length == 0 }
+          let names = object.functions.{{name}}.map { function => function.name }
+          if (object.name == "SdkHelpers") {
+            assert { names == ["moduleManifest"] }
+            let function = object.functions.{{id}}[0]
+            if (function == null) {
+              raise "moduleManifest is missing"
+            } else {
+              let constructor = Dagger.loadFunctionFromID(toString(function.id) :: Dagger.FunctionID!)
+              assert { constructor.args.{{name}}.map { arg => arg.name } == ["loadToml", "loadJson"] }
+              constructor.args.{{id}}.map { arg =>
+                assert { Dagger.loadFunctionArgFromID(toString(arg.id) :: Dagger.FunctionArgID!).typeDef.optional }
+                null
+              }
+            }
+          } else {
+            assert { object.name == "SdkHelpersModuleManifest" }
+            let expected = [
+              "withName", "withLegacyRuntimeDependency",
+              "withoutLegacyRuntimeDependency", "withoutLegacyRuntimeDependencies",
+              "withDangEntrypoint", "withModuleEntrypoint",
+              "withLegacyGoRuntime", "withLegacyDangRuntime",
+              "withLegacyPythonRuntime", "withLegacyTypescriptRuntime",
+              "withLegacyPHPRuntime", "withLegacyElixirRuntime", "withLegacyJavaRuntime",
+              "withLegacyInclude", "withoutLegacyFields",
+              "validate", "tomlFile", "legacyJSONFile", "directory",
+            ]
+            assert { names.length == expected.length }
+            expected.map { name =>
+              assert { names.contains(name) }
+              null
+            }
+          }
+        }
+        null
+      }
+    }
+    null
+  }
+
+  # Expected contents come from the Go builder. Do not derive them from the module.
+  let checkFiles(ws: Workspace!, caseName: String!, directory: Directory!, toml: File!, json: File): Void {
+    let expected = Dagger.json.withContents(
+      ws.file("/.dagger/modules/sdk-helpers-dev/expected.json").contents :: Dagger.JSON!
+    ).field([caseName])
+    let names = expected.fields
+    assert { directory.entries.length == names.length }
+    names.map { name =>
+      assert { directory.entries.contains(name) }
+      let file = directory.file(name)
+      let contents = self.engineVersion(expected.field([name]).asString)
+      assert { file.name == name }
+      assert { file.contents == contents }
+      let stat = file.stat
+      if (stat == null) {
+        raise "file status is missing"
+      } else {
+        assert { stat.permissions == 420 }
+      }
+      null
+    }
+    assert { toml.name == "dagger-module.toml" }
+    assert { toml.contents == self.engineVersion(expected.field(["dagger-module.toml"]).asString) }
+    if (json != null) {
+      assert { json.name == "dagger.json" }
+      assert { json.contents == self.engineVersion(expected.field(["dagger.json"]).asString) }
+    }
+    null
+  }
+
+  let engineVersion(value: String!): String! {
+    value.replace("${ENGINE_VERSION}", Dagger.version.split("+")[0] ?? Dagger.version)
+  }
+}

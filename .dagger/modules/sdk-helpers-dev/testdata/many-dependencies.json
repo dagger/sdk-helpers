@@ -1,0 +1,407 @@
+{
+  "name": "scale-review",
+  "engineVersion": "v0.21.9",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "dep-099",
+      "source": "./module-0"
+    },
+    {
+      "name": "dep-098",
+      "source": "./module-1"
+    },
+    {
+      "name": "dep-097",
+      "source": "./module-2"
+    },
+    {
+      "name": "dep-096",
+      "source": "./module-3"
+    },
+    {
+      "name": "dep-095",
+      "source": "./module-4"
+    },
+    {
+      "name": "dep-094",
+      "source": "./module-5"
+    },
+    {
+      "name": "dep-093",
+      "source": "./module-6"
+    },
+    {
+      "name": "dep-092",
+      "source": "./module-7"
+    },
+    {
+      "name": "dep-091",
+      "source": "./module-8"
+    },
+    {
+      "name": "dep-090",
+      "source": "./module-9"
+    },
+    {
+      "name": "dep-089",
+      "source": "./module-10"
+    },
+    {
+      "name": "dep-088",
+      "source": "./module-11"
+    },
+    {
+      "name": "dep-087",
+      "source": "./module-12"
+    },
+    {
+      "name": "dep-086",
+      "source": "./module-13"
+    },
+    {
+      "name": "dep-085",
+      "source": "./module-14"
+    },
+    {
+      "name": "dep-084",
+      "source": "./module-15"
+    },
+    {
+      "name": "dep-083",
+      "source": "./module-16"
+    },
+    {
+      "name": "dep-082",
+      "source": "./module-17"
+    },
+    {
+      "name": "dep-081",
+      "source": "./module-18"
+    },
+    {
+      "name": "dep-080",
+      "source": "./module-19"
+    },
+    {
+      "name": "dep-079",
+      "source": "./module-20"
+    },
+    {
+      "name": "dep-078",
+      "source": "./module-21"
+    },
+    {
+      "name": "dep-077",
+      "source": "./module-22"
+    },
+    {
+      "name": "dep-076",
+      "source": "./module-23"
+    },
+    {
+      "name": "dep-075",
+      "source": "./module-24"
+    },
+    {
+      "name": "dep-074",
+      "source": "./module-25"
+    },
+    {
+      "name": "dep-073",
+      "source": "./module-26"
+    },
+    {
+      "name": "dep-072",
+      "source": "./module-27"
+    },
+    {
+      "name": "dep-071",
+      "source": "./module-28"
+    },
+    {
+      "name": "dep-070",
+      "source": "./module-29"
+    },
+    {
+      "name": "dep-069",
+      "source": "./module-30"
+    },
+    {
+      "name": "dep-068",
+      "source": "./module-31"
+    },
+    {
+      "name": "dep-067",
+      "source": "./module-32"
+    },
+    {
+      "name": "dep-066",
+      "source": "./module-33"
+    },
+    {
+      "name": "dep-065",
+      "source": "./module-34"
+    },
+    {
+      "name": "dep-064",
+      "source": "./module-35"
+    },
+    {
+      "name": "dep-063",
+      "source": "./module-36"
+    },
+    {
+      "name": "dep-062",
+      "source": "./module-37"
+    },
+    {
+      "name": "dep-061",
+      "source": "./module-38"
+    },
+    {
+      "name": "dep-060",
+      "source": "./module-39"
+    },
+    {
+      "name": "dep-059",
+      "source": "./module-40"
+    },
+    {
+      "name": "dep-058",
+      "source": "./module-41"
+    },
+    {
+      "name": "dep-057",
+      "source": "./module-42"
+    },
+    {
+      "name": "dep-056",
+      "source": "./module-43"
+    },
+    {
+      "name": "dep-055",
+      "source": "./module-44"
+    },
+    {
+      "name": "dep-054",
+      "source": "./module-45"
+    },
+    {
+      "name": "dep-053",
+      "source": "./module-46"
+    },
+    {
+      "name": "dep-052",
+      "source": "./module-47"
+    },
+    {
+      "name": "dep-051",
+      "source": "./module-48"
+    },
+    {
+      "name": "dep-050",
+      "source": "./module-49"
+    },
+    {
+      "name": "dep-049",
+      "source": "./module-50"
+    },
+    {
+      "name": "dep-048",
+      "source": "./module-51"
+    },
+    {
+      "name": "dep-047",
+      "source": "./module-52"
+    },
+    {
+      "name": "dep-046",
+      "source": "./module-53"
+    },
+    {
+      "name": "dep-045",
+      "source": "./module-54"
+    },
+    {
+      "name": "dep-044",
+      "source": "./module-55"
+    },
+    {
+      "name": "dep-043",
+      "source": "./module-56"
+    },
+    {
+      "name": "dep-042",
+      "source": "./module-57"
+    },
+    {
+      "name": "dep-041",
+      "source": "./module-58"
+    },
+    {
+      "name": "dep-040",
+      "source": "./module-59"
+    },
+    {
+      "name": "dep-039",
+      "source": "./module-60"
+    },
+    {
+      "name": "dep-038",
+      "source": "./module-61"
+    },
+    {
+      "name": "dep-037",
+      "source": "./module-62"
+    },
+    {
+      "name": "dep-036",
+      "source": "./module-63"
+    },
+    {
+      "name": "dep-035",
+      "source": "./module-64"
+    },
+    {
+      "name": "dep-034",
+      "source": "./module-65"
+    },
+    {
+      "name": "dep-033",
+      "source": "./module-66"
+    },
+    {
+      "name": "dep-032",
+      "source": "./module-67"
+    },
+    {
+      "name": "dep-031",
+      "source": "./module-68"
+    },
+    {
+      "name": "dep-030",
+      "source": "./module-69"
+    },
+    {
+      "name": "dep-029",
+      "source": "./module-70"
+    },
+    {
+      "name": "dep-028",
+      "source": "./module-71"
+    },
+    {
+      "name": "dep-027",
+      "source": "./module-72"
+    },
+    {
+      "name": "dep-026",
+      "source": "./module-73"
+    },
+    {
+      "name": "dep-025",
+      "source": "./module-74"
+    },
+    {
+      "name": "dep-024",
+      "source": "./module-75"
+    },
+    {
+      "name": "dep-023",
+      "source": "./module-76"
+    },
+    {
+      "name": "dep-022",
+      "source": "./module-77"
+    },
+    {
+      "name": "dep-021",
+      "source": "./module-78"
+    },
+    {
+      "name": "dep-020",
+      "source": "./module-79"
+    },
+    {
+      "name": "dep-019",
+      "source": "./module-80"
+    },
+    {
+      "name": "dep-018",
+      "source": "./module-81"
+    },
+    {
+      "name": "dep-017",
+      "source": "./module-82"
+    },
+    {
+      "name": "dep-016",
+      "source": "./module-83"
+    },
+    {
+      "name": "dep-015",
+      "source": "./module-84"
+    },
+    {
+      "name": "dep-014",
+      "source": "./module-85"
+    },
+    {
+      "name": "dep-013",
+      "source": "./module-86"
+    },
+    {
+      "name": "dep-012",
+      "source": "./module-87"
+    },
+    {
+      "name": "dep-011",
+      "source": "./module-88"
+    },
+    {
+      "name": "dep-010",
+      "source": "./module-89"
+    },
+    {
+      "name": "dep-009",
+      "source": "./module-90"
+    },
+    {
+      "name": "dep-008",
+      "source": "./module-91"
+    },
+    {
+      "name": "dep-007",
+      "source": "./module-92"
+    },
+    {
+      "name": "dep-006",
+      "source": "./module-93"
+    },
+    {
+      "name": "dep-005",
+      "source": "./module-94"
+    },
+    {
+      "name": "dep-004",
+      "source": "./module-95"
+    },
+    {
+      "name": "dep-003",
+      "source": "./module-96"
+    },
+    {
+      "name": "dep-002",
+      "source": "./module-97"
+    },
+    {
+      "name": "dep-001",
+      "source": "./module-98"
+    },
+    {
+      "name": "dep-000",
+      "source": "./module-99"
+    }
+  ]
+}
