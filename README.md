@@ -2,6 +2,61 @@
 
 A pure Dang module with shared helpers for Dagger SDKs.
 
+## Manifest builder
+
+Create a manifest or load existing TOML and JSON manifests.
+The GraphQL API is shown below. `loadToml` and `loadJson` accept file IDs.
+Dagger exposes the `ModuleManifest` type as `SdkHelpersModuleManifest`.
+
+```graphql
+extend type Query {
+  sdkHelpers: SdkHelpers!
+}
+
+type SdkHelpers {
+  moduleManifest(
+    loadToml: ID
+    loadJson: ID
+  ): SdkHelpersModuleManifest!
+}
+
+type SdkHelpersModuleManifest implements Node {
+  id: ID!
+
+  withName(name: String!): SdkHelpersModuleManifest!
+  withLegacyRuntimeDependency(
+    source: String!
+    name: String
+    pin: String
+  ): SdkHelpersModuleManifest!
+  withoutLegacyRuntimeDependency(name: String!): SdkHelpersModuleManifest!
+  withoutLegacyRuntimeDependencies: SdkHelpersModuleManifest!
+
+  withDangEntrypoint(source: String!): SdkHelpersModuleManifest!
+  withModuleEntrypoint(source: String!): SdkHelpersModuleManifest!
+
+  withLegacyGoRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyDangRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyPythonRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyTypescriptRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyPHPRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyElixirRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyJavaRuntime(moduleSource: String, engineVersion: String): SdkHelpersModuleManifest!
+  withLegacyInclude(path: String!): SdkHelpersModuleManifest!
+  withoutLegacyFields: SdkHelpersModuleManifest!
+
+  validate(targetEngineVersion: String): Void
+  tomlFile: File!
+  legacyJSONFile: File!
+  directory: Directory!
+}
+```
+
+A manifest can contain both an entrypoint and legacy runtime fields. New engines
+use the entrypoint. Older engines use the legacy runtime.
+
+## Usage
+
 Add `github.com/dagger/sdk-helpers@main` as a dependency named `sdk-helpers`.
 For a fixed version, use a full commit hash instead of `main`.
 
