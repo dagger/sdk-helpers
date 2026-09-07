@@ -1,0 +1,31 @@
+"""Checks for the module manifest serializer."""
+type ManifestChecks {
+  """A module source of "." is the default, so it is not written to dagger-module.toml."""
+  omitsDefaultModuleSource: Void @check {
+    self.assertNoModuleSource(
+      ModuleManifest()
+        .withName("check")
+        .withLegacyPythonRuntime(moduleSource: ".", engineVersion: "v0.20.3")
+        .tomlFile
+        .contents,
+    )
+  }
+
+  """A manifest loaded without a module source does not gain one when written back."""
+  keepsLoadedModuleSourceUnset: Void @check {
+    let loaded = ModuleManifest(
+      loadTOML: Dagger.file(
+        "dagger-module.toml",
+        "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"python\"\n",
+      ),
+    )
+    self.assertNoModuleSource(loaded.tomlFile.contents)
+  }
+
+  let assertNoModuleSource(contents: String!): Void {
+    if (contents.split("\n").contains("source = \".\"")) {
+      raise "dagger-module.toml should omit the default module source:\n" + contents
+    }
+    null
+  }
+}

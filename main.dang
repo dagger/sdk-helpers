@@ -9,6 +9,11 @@ type SdkHelpers {
   ): ModuleManifest! {
     ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
   }
+
+  """Checks for the module manifest serializer."""
+  manifestChecks: ManifestChecks! {
+    ManifestChecks()
+  }
 }
 
 """A Dagger module manifest."""
@@ -471,7 +476,8 @@ type ModuleManifest {
       ["name = " + self.tomlString(name)] +
       self.optionalTOMLValue("engineVersion", legacyEngineVersion) +
       self.optionalTOMLStringList("include", legacyInclude) +
-      self.optionalTOMLValue("source", legacyModuleSource) +
+      # "." is the source a reader assumes when the field is absent, so writing it is redundant.
+      self.optionalTOMLValue("source", if (legacyModuleSource == ".") { "" } else { legacyModuleSource }) +
       self.optionalTOMLBoolean(base, "disableDefaultFunctionCaching")
     let runtimeTable = if (legacyRuntime == "") {
       [] :: [String!]!
