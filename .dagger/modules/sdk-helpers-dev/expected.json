@@ -1,0 +1,248 @@
+{
+  "toml-contents": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\ninclude = [\"**/*.go\", \"go.mod\"]\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"**/*.go\",\n    \"go.mod\"\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "json-contents": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\"]\nsource = \"./src\"\n\n[runtime]\n  source = \"python\"\n\n[entrypoint]\n  kind = \"module\"\n  source = \"./entrypoint\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"python\"\n  },\n  \"include\": [\n    \"src/**\"\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "runtime-Go": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "runtime-Dang": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"dang\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"dang\"\n  }\n}\n"
+  },
+  "runtime-Python": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"python\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"python\"\n  }\n}\n"
+  },
+  "runtime-Typescript": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"typescript\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"typescript\"\n  }\n}\n"
+  },
+  "runtime-PHP": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"php\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"php\"\n  }\n}\n"
+  },
+  "runtime-Elixir": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"elixir\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"elixir\"\n  }\n}\n"
+  },
+  "runtime-Java": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"java\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"java\"\n  }\n}\n"
+  },
+  "without-legacy-fields": {
+    "dagger-module.toml": "name = \"payments\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n"
+  },
+  "replace-runtime": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.21.0\"\nsource = \"./python\"\n\n[runtime]\n  source = \"python\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.21.0\",\n  \"sdk\": {\n    \"source\": \"python\"\n  },\n  \"source\": \"./python\"\n}\n"
+  },
+  "reset-runtime": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"dang\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"dang\"\n  }\n}\n"
+  },
+  "replace-entrypoint": {
+    "dagger-module.toml": "name = \"payments\"\n\n[entrypoint]\n  kind = \"module\"\n  source = \"./entrypoint\"\n"
+  },
+  "load-json": {
+    "dagger-module.toml": "name = \"legacy-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"stale\"\n  source = \"github.com/example/stale\"\n",
+    "dagger.json": "{\n  \"name\": \"legacy-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"stale\",\n      \"source\": \"github.com/example/stale\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "update-json": {
+    "dagger-module.toml": "name = \"updated-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"client\"\n  source = \"./client\"\n  pin = \"sha256:new\"\n",
+    "dagger.json": "{\n  \"name\": \"updated-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"client\",\n      \"source\": \"./client\",\n      \"pin\": \"sha256:new\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "remove-json": {
+    "dagger-module.toml": "name = \"legacy-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"stale\"\n  source = \"github.com/example/stale\"\n",
+    "dagger.json": "{\n  \"name\": \"legacy-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"stale\",\n      \"source\": \"github.com/example/stale\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "strip-json": {
+    "dagger-module.toml": "name = \"legacy-name\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n"
+  },
+  "load-toml": {
+    "dagger-module.toml": "name = \"current-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"keep\"\n  source = \"github.com/example/keep\"\n  pin = \"sha256:old\"\n",
+    "dagger.json": "{\n  \"name\": \"current-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"keep\",\n      \"source\": \"github.com/example/keep\",\n      \"pin\": \"sha256:old\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "update-toml": {
+    "dagger-module.toml": "name = \"updated-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"client\"\n  source = \"./client\"\n  pin = \"sha256:new\"\n",
+    "dagger.json": "{\n  \"name\": \"updated-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"client\",\n      \"source\": \"./client\",\n      \"pin\": \"sha256:new\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "remove-toml": {
+    "dagger-module.toml": "name = \"current-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"current-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"source\": \".\"\n}\n"
+  },
+  "strip-toml": {
+    "dagger-module.toml": "name = \"current-name\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n"
+  },
+  "load-both": {
+    "dagger-module.toml": "name = \"current-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"keep\"\n  source = \"github.com/example/keep\"\n  pin = \"sha256:old\"\n",
+    "dagger.json": "{\n  \"name\": \"current-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"keep\",\n      \"source\": \"github.com/example/keep\",\n      \"pin\": \"sha256:old\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "update-both": {
+    "dagger-module.toml": "name = \"updated-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"client\"\n  source = \"./client\"\n  pin = \"sha256:new\"\n",
+    "dagger.json": "{\n  \"name\": \"updated-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"client\",\n      \"source\": \"./client\",\n      \"pin\": \"sha256:new\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "remove-both": {
+    "dagger-module.toml": "name = \"current-name\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"current-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"legacy\": true\n    }\n  },\n  \"source\": \".\"\n}\n"
+  },
+  "strip-both": {
+    "dagger-module.toml": "name = \"current-name\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n"
+  },
+  "load-full": {
+    "dagger-module.toml": "\"$schema\" = \"https://example.com/schema.json\"\nname = \"legacy-name\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\", \"!vendor/**\", \"keep/**\"]\nsource = \"./src\"\ndisableDefaultFunctionCaching = false\n\n[runtime]\n  source = \"go\"\n  pin = \"sha256:sdk\"\n\n[[dependencies]]\n  source = \"string-dependency\"\n\n[[dependencies]]\n  name = \"object-dependency\"\n  source = \"github.com/example/object\"\n  pin = \"sha256:object\"\n\n[codegen]\n  automaticGitignore = false\n\n[[clients]]\n  generator = \"go\"\n  directory = \"./client\"\n",
+    "dagger.json": "{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"name\": \"legacy-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"pin\": \"sha256:sdk\",\n    \"config\": {\n      \"alpha\": {\n        \"enabled\": true\n      },\n      \"zeta\": [\n        \"last\",\n        2\n      ]\n    },\n    \"debug\": true,\n    \"experimental\": {\n      \"alpha\": true,\n      \"zeta\": false\n    }\n  },\n  \"blueprint\": {\n    \"name\": \"blueprint\",\n    \"source\": \"github.com/example/blueprint\",\n    \"pin\": \"sha256:blueprint\",\n    \"customizations\": [\n      {\n        \"function\": [\n          \"build\",\n          \"run\"\n        ],\n        \"argument\": \"source\",\n        \"default\": \".\",\n        \"defaultPath\": \"src\",\n        \"defaultAddress\": \"alpine\",\n        \"ignore\": [\n          \"tmp/**\"\n        ]\n      }\n    ],\n    \"ignoreChecks\": [\n      \"lint\"\n    ],\n    \"ignoreGenerators\": [\n      \"docs\"\n    ],\n    \"ignoreServices\": [\n      \"db\"\n    ],\n    \"portMappings\": {\n      \"db\": [\n        \"5432:5432\"\n      ],\n      \"web\": [\n        \"8080:80\"\n      ]\n    }\n  },\n  \"toolchains\": [\n    {\n      \"name\": \"tools\",\n      \"source\": \"github.com/example/tools\"\n    }\n  ],\n  \"include\": [\n    \"src/**\",\n    \"!vendor/**\",\n    \"keep/**\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"string-dependency\"\n    },\n    {\n      \"name\": \"object-dependency\",\n      \"source\": \"github.com/example/object\",\n      \"pin\": \"sha256:object\",\n      \"customizations\": [\n        {\n          \"argument\": \"mode\",\n          \"default\": \"fast\"\n        }\n      ],\n      \"ignoreChecks\": [\n        \"slow\"\n      ],\n      \"ignoreGenerators\": [\n        \"client\"\n      ],\n      \"ignoreServices\": [\n        \"cache\"\n      ],\n      \"portMappings\": {\n        \"api\": [\n          \"9090:90\"\n        ]\n      }\n    }\n  ],\n  \"source\": \"./src\",\n  \"codegen\": {\n    \"automaticGitignore\": false\n  },\n  \"clients\": [\n    {\n      \"generator\": \"go\",\n      \"directory\": \"./client\"\n    }\n  ],\n  \"disableDefaultFunctionCaching\": false\n}\n"
+  },
+  "update-full": {
+    "dagger-module.toml": "\"$schema\" = \"https://example.com/schema.json\"\nname = \"updated-name\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\", \"!vendor/**\", \"keep/**\"]\nsource = \"./src\"\ndisableDefaultFunctionCaching = false\n\n[runtime]\n  source = \"go\"\n  pin = \"sha256:sdk\"\n\n[[dependencies]]\n  name = \"client\"\n  source = \"./client\"\n  pin = \"sha256:new\"\n\n[codegen]\n  automaticGitignore = false\n\n[[clients]]\n  generator = \"go\"\n  directory = \"./client\"\n",
+    "dagger.json": "{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"name\": \"updated-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"pin\": \"sha256:sdk\",\n    \"config\": {\n      \"alpha\": {\n        \"enabled\": true\n      },\n      \"zeta\": [\n        \"last\",\n        2\n      ]\n    },\n    \"debug\": true,\n    \"experimental\": {\n      \"alpha\": true,\n      \"zeta\": false\n    }\n  },\n  \"blueprint\": {\n    \"name\": \"blueprint\",\n    \"source\": \"github.com/example/blueprint\",\n    \"pin\": \"sha256:blueprint\",\n    \"customizations\": [\n      {\n        \"function\": [\n          \"build\",\n          \"run\"\n        ],\n        \"argument\": \"source\",\n        \"default\": \".\",\n        \"defaultPath\": \"src\",\n        \"defaultAddress\": \"alpine\",\n        \"ignore\": [\n          \"tmp/**\"\n        ]\n      }\n    ],\n    \"ignoreChecks\": [\n      \"lint\"\n    ],\n    \"ignoreGenerators\": [\n      \"docs\"\n    ],\n    \"ignoreServices\": [\n      \"db\"\n    ],\n    \"portMappings\": {\n      \"db\": [\n        \"5432:5432\"\n      ],\n      \"web\": [\n        \"8080:80\"\n      ]\n    }\n  },\n  \"toolchains\": [\n    {\n      \"name\": \"tools\",\n      \"source\": \"github.com/example/tools\"\n    }\n  ],\n  \"include\": [\n    \"src/**\",\n    \"!vendor/**\",\n    \"keep/**\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"client\",\n      \"source\": \"./client\",\n      \"pin\": \"sha256:new\"\n    }\n  ],\n  \"source\": \"./src\",\n  \"codegen\": {\n    \"automaticGitignore\": false\n  },\n  \"clients\": [\n    {\n      \"generator\": \"go\",\n      \"directory\": \"./client\"\n    }\n  ],\n  \"disableDefaultFunctionCaching\": false\n}\n"
+  },
+  "remove-full": {
+    "dagger-module.toml": "\"$schema\" = \"https://example.com/schema.json\"\nname = \"legacy-name\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\", \"!vendor/**\", \"keep/**\"]\nsource = \"./src\"\ndisableDefaultFunctionCaching = false\n\n[runtime]\n  source = \"go\"\n  pin = \"sha256:sdk\"\n\n[[dependencies]]\n  source = \"string-dependency\"\n\n[[dependencies]]\n  name = \"object-dependency\"\n  source = \"github.com/example/object\"\n  pin = \"sha256:object\"\n\n[codegen]\n  automaticGitignore = false\n\n[[clients]]\n  generator = \"go\"\n  directory = \"./client\"\n",
+    "dagger.json": "{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"name\": \"legacy-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"pin\": \"sha256:sdk\",\n    \"config\": {\n      \"alpha\": {\n        \"enabled\": true\n      },\n      \"zeta\": [\n        \"last\",\n        2\n      ]\n    },\n    \"debug\": true,\n    \"experimental\": {\n      \"alpha\": true,\n      \"zeta\": false\n    }\n  },\n  \"blueprint\": {\n    \"name\": \"blueprint\",\n    \"source\": \"github.com/example/blueprint\",\n    \"pin\": \"sha256:blueprint\",\n    \"customizations\": [\n      {\n        \"function\": [\n          \"build\",\n          \"run\"\n        ],\n        \"argument\": \"source\",\n        \"default\": \".\",\n        \"defaultPath\": \"src\",\n        \"defaultAddress\": \"alpine\",\n        \"ignore\": [\n          \"tmp/**\"\n        ]\n      }\n    ],\n    \"ignoreChecks\": [\n      \"lint\"\n    ],\n    \"ignoreGenerators\": [\n      \"docs\"\n    ],\n    \"ignoreServices\": [\n      \"db\"\n    ],\n    \"portMappings\": {\n      \"db\": [\n        \"5432:5432\"\n      ],\n      \"web\": [\n        \"8080:80\"\n      ]\n    }\n  },\n  \"toolchains\": [\n    {\n      \"name\": \"tools\",\n      \"source\": \"github.com/example/tools\"\n    }\n  ],\n  \"include\": [\n    \"src/**\",\n    \"!vendor/**\",\n    \"keep/**\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"string-dependency\"\n    },\n    {\n      \"name\": \"object-dependency\",\n      \"source\": \"github.com/example/object\",\n      \"pin\": \"sha256:object\",\n      \"customizations\": [\n        {\n          \"argument\": \"mode\",\n          \"default\": \"fast\"\n        }\n      ],\n      \"ignoreChecks\": [\n        \"slow\"\n      ],\n      \"ignoreGenerators\": [\n        \"client\"\n      ],\n      \"ignoreServices\": [\n        \"cache\"\n      ],\n      \"portMappings\": {\n        \"api\": [\n          \"9090:90\"\n        ]\n      }\n    }\n  ],\n  \"source\": \"./src\",\n  \"codegen\": {\n    \"automaticGitignore\": false\n  },\n  \"clients\": [\n    {\n      \"generator\": \"go\",\n      \"directory\": \"./client\"\n    }\n  ],\n  \"disableDefaultFunctionCaching\": false\n}\n"
+  },
+  "strip-full": {
+    "dagger-module.toml": "\"$schema\" = \"https://example.com/schema.json\"\nname = \"legacy-name\"\ndisableDefaultFunctionCaching = false\n\n[codegen]\n  automaticGitignore = false\n\n[[clients]]\n  generator = \"go\"\n  directory = \"./client\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n"
+  },
+  "full-update": {
+    "dagger-module.toml": "\"$schema\" = \"https://example.com/schema.json\"\nname = \"updated-name\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\", \"!vendor/**\", \"keep/**\"]\nsource = \"./src\"\ndisableDefaultFunctionCaching = false\n\n[runtime]\n  source = \"go\"\n  pin = \"sha256:sdk\"\n\n[[dependencies]]\n  name = \"client\"\n  source = \"./client\"\n  pin = \"sha256:new\"\n\n[[dependencies]]\n  name = \"object-dependency\"\n  source = \"github.com/example/object\"\n  pin = \"sha256:object\"\n\n[codegen]\n  automaticGitignore = false\n\n[[clients]]\n  generator = \"go\"\n  directory = \"./client\"\n",
+    "dagger.json": "{\n  \"$schema\": \"https://example.com/schema.json\",\n  \"name\": \"updated-name\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"pin\": \"sha256:sdk\",\n    \"config\": {\n      \"alpha\": {\n        \"enabled\": true\n      },\n      \"zeta\": [\n        \"last\",\n        2\n      ]\n    },\n    \"debug\": true,\n    \"experimental\": {\n      \"alpha\": true,\n      \"zeta\": false\n    }\n  },\n  \"blueprint\": {\n    \"name\": \"blueprint\",\n    \"source\": \"github.com/example/blueprint\",\n    \"pin\": \"sha256:blueprint\",\n    \"customizations\": [\n      {\n        \"function\": [\n          \"build\",\n          \"run\"\n        ],\n        \"argument\": \"source\",\n        \"default\": \".\",\n        \"defaultPath\": \"src\",\n        \"defaultAddress\": \"alpine\",\n        \"ignore\": [\n          \"tmp/**\"\n        ]\n      }\n    ],\n    \"ignoreChecks\": [\n      \"lint\"\n    ],\n    \"ignoreGenerators\": [\n      \"docs\"\n    ],\n    \"ignoreServices\": [\n      \"db\"\n    ],\n    \"portMappings\": {\n      \"db\": [\n        \"5432:5432\"\n      ],\n      \"web\": [\n        \"8080:80\"\n      ]\n    }\n  },\n  \"toolchains\": [\n    {\n      \"name\": \"tools\",\n      \"source\": \"github.com/example/tools\"\n    }\n  ],\n  \"include\": [\n    \"src/**\",\n    \"!vendor/**\",\n    \"keep/**\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"client\",\n      \"source\": \"./client\",\n      \"pin\": \"sha256:new\"\n    },\n    {\n      \"name\": \"object-dependency\",\n      \"source\": \"github.com/example/object\",\n      \"pin\": \"sha256:object\",\n      \"customizations\": [\n        {\n          \"argument\": \"mode\",\n          \"default\": \"fast\"\n        }\n      ],\n      \"ignoreChecks\": [\n        \"slow\"\n      ],\n      \"ignoreGenerators\": [\n        \"client\"\n      ],\n      \"ignoreServices\": [\n        \"cache\"\n      ],\n      \"portMappings\": {\n        \"api\": [\n          \"9090:90\"\n        ]\n      }\n    }\n  ],\n  \"source\": \"./src\",\n  \"codegen\": {\n    \"automaticGitignore\": false\n  },\n  \"clients\": [\n    {\n      \"generator\": \"go\",\n      \"directory\": \"./client\"\n    }\n  ],\n  \"disableDefaultFunctionCaching\": false\n}\n"
+  },
+  "external-runtime": {
+    "dagger-module.toml": "name = \"external-runtime\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"github.com/example/sdk@v1.2.3\"\n",
+    "dagger.json": "{\n  \"name\": \"external-runtime\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"github.com/example/sdk@v1.2.3\"\n  },\n  \"source\": \".\"\n}\n"
+  },
+  "old-forms": {
+    "dagger-module.toml": "name = \"old\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src\", \"!tmp\", \"keep\"]\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  source = \"z\"\n\n[[dependencies]]\n  source = \"a\"\n",
+    "dagger.json": "{\n  \"name\": \"old\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"src\",\n    \"!tmp\",\n    \"keep\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"z\"\n    },\n    {\n      \"name\": \"\",\n      \"source\": \"a\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "loaded-json-without-runtime": {
+    "dagger-module.toml": "name = \"current\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"./internal/dagger/main.dang\"\n",
+    "dagger.json": "{\n  \"name\": \"current\",\n  \"engineVersion\": \"\"\n}\n"
+  },
+  "toml-runtime-ignored-fields": {
+    "dagger-module.toml": "name = \"test\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"test\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"source\": \".\"\n}\n"
+  },
+  "null-fields": {
+    "dagger-module.toml": "name = \"nulls\"\nengineVersion = \"v0.20.3\"\ninclude = [\"\", \"a\"]\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  source = \"dep\"\n",
+    "dagger.json": "{\n  \"name\": \"nulls\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"experimental\": {\n      \"x\": false\n    }\n  },\n  \"include\": [\n    \"\",\n    \"a\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"dep\",\n      \"portMappings\": {\n        \"x\": null,\n        \"y\": []\n      }\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "empty-codegen": {
+    "dagger-module.toml": "name = \"test\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[codegen]\n\n[[clients]]\n  generator = \"\"\n  directory = \"\"\n",
+    "dagger.json": "{\n  \"name\": \"test\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"source\": \".\",\n  \"codegen\": {},\n  \"clients\": [\n    {\n      \"generator\": \"\",\n      \"directory\": \"\"\n    }\n  ]\n}\n"
+  },
+  "version-0.20.3": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v0.20.3": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-0": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v0": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-0.20": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v0.20": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v1": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v1\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v1\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-1.2": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v1.2\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v1.2\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v1.2.3-rc.1+build.42": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v1.2.3-rc.1+build.42\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v1.2.3-rc.1+build.42\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-latest": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-current": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"${ENGINE_VERSION}\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"${ENGINE_VERSION}\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-dev": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.11.9\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.11.9\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v01.2.3": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.11.9\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.11.9\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v1.2.3-01": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.11.9\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.11.9\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "version-v1.2.3+01": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v1.2.3+01\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v1.2.3+01\",\n  \"sdk\": {\n    \"source\": \"go\"\n  }\n}\n"
+  },
+  "dependency-replace-keeps-order": {
+    "dagger-module.toml": "name = \"test\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"z\"\n  source = \"new\"\n  pin = \"pin\"\n\n[[dependencies]]\n  name = \"a\"\n  source = \"a\"\n",
+    "dagger.json": "{\n  \"name\": \"test\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"z\",\n      \"source\": \"new\",\n      \"pin\": \"pin\"\n    },\n    {\n      \"name\": \"a\",\n      \"source\": \"a\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "dependency-add-sorts": {
+    "dagger-module.toml": "name = \"test\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"a\"\n  source = \"a\"\n\n[[dependencies]]\n  name = \"b\"\n  source = \"b\"\n\n[[dependencies]]\n  name = \"z\"\n  source = \"z\"\n",
+    "dagger.json": "{\n  \"name\": \"test\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"a\",\n      \"source\": \"a\"\n    },\n    {\n      \"name\": \"b\",\n      \"source\": \"b\"\n    },\n    {\n      \"name\": \"z\",\n      \"source\": \"z\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "dependency-tied-keys": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  source = \"a\"\n\n[[dependencies]]\n  name = \"a\"\n  source = \"b\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"a\"\n    },\n    {\n      \"name\": \"a\",\n      \"source\": \"b\"\n    }\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "dependency-unnamed-replace": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  source = \"a\"\n  pin = \"new\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"dependencies\": [\n    {\n      \"name\": \"\",\n      \"source\": \"a\",\n      \"pin\": \"new\"\n    }\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "dependency-unnamed-remove": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"source\": \"./src\"\n}\n"
+  },
+  "dependency-empty-name-remove": {
+    "dagger-module.toml": "name = \"payments\"\nengineVersion = \"v0.20.3\"\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"payments\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"source\": \"./src\"\n}\n"
+  },
+  "escape-'<tag>&\\u2028\\u2029'": {
+    "dagger-module.toml": "name = \"<tag>&  \"\nengineVersion = \"v0.20.3\"\ninclude = [\"<tag>&  \"]\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"<tag>&  \"\n  source = \"<tag>&  \"\n  pin = \"<tag>&  \"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"<tag>&  \"\n",
+    "dagger.json": "{\n  \"name\": \"\\u003ctag\\u003e\\u0026\\u2028\\u2029\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"\\u003ctag\\u003e\\u0026\\u2028\\u2029\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\\u003ctag\\u003e\\u0026\\u2028\\u2029\",\n      \"source\": \"\\u003ctag\\u003e\\u0026\\u2028\\u2029\",\n      \"pin\": \"\\u003ctag\\u003e\\u0026\\u2028\\u2029\"\n    }\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "escape-'quote\"\\\\\\n\\t\\r\\x08\\x0c'": {
+    "dagger-module.toml": "name = \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\nengineVersion = \"v0.20.3\"\ninclude = [\"quote\\\"\\\\\\n\\t\\r\\b\\f\"]\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n  source = \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n  pin = \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n",
+    "dagger.json": "{\n  \"name\": \"quote\\\"\\\\\\n\\t\\r\\b\\f\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"quote\\\"\\\\\\n\\t\\r\\b\\f\",\n      \"source\": \"quote\\\"\\\\\\n\\t\\r\\b\\f\",\n      \"pin\": \"quote\\\"\\\\\\n\\t\\r\\b\\f\"\n    }\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "escape-controls": {
+    "dagger-module.toml": "name = \"\\u0000\\u000B\\u000E\\u001E\u001f\"\nengineVersion = \"v0.20.3\"\ninclude = [\"\\u0000\\u000B\\u000E\\u001E\u001f\"]\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"\\u0000\\u000B\\u000E\\u001E\u001f\"\n  source = \"\\u0000\\u000B\\u000E\\u001E\u001f\"\n  pin = \"\\u0000\\u000B\\u000E\\u001E\u001f\"\n",
+    "dagger.json": "{\n  \"name\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"\\u0000\\u000b\\u000e\\u001e\\u001f\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\",\n      \"source\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\",\n      \"pin\": \"\\u0000\\u000b\\u000e\\u001e\\u001f\"\n    }\n  ],\n  \"source\": \".\"\n}\n"
+  },
+  "escape-'é漢字😀'": {
+    "dagger-module.toml": "name = \"é漢字😀\"\nengineVersion = \"v0.20.3\"\ninclude = [\"é漢字😀\"]\nsource = \"./src\"\n\n[runtime]\n  source = \"go\"\n\n[[dependencies]]\n  name = \"é漢字😀\"\n  source = \"é漢字😀\"\n  pin = \"é漢字😀\"\n\n[entrypoint]\n  kind = \"dang\"\n  source = \"é漢字😀\"\n",
+    "dagger.json": "{\n  \"name\": \"é漢字😀\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\"\n  },\n  \"include\": [\n    \"é漢字😀\"\n  ],\n  \"dependencies\": [\n    {\n      \"name\": \"é漢字😀\",\n      \"source\": \"é漢字😀\",\n      \"pin\": \"é漢字😀\"\n    }\n  ],\n  \"source\": \"./src\"\n}\n"
+  },
+  "sdk-number-format": {
+    "dagger-module.toml": "name = \"numbers\"\nengineVersion = \"v0.20.3\"\nsource = \".\"\n\n[runtime]\n  source = \"go\"\n",
+    "dagger.json": "{\n  \"name\": \"numbers\",\n  \"engineVersion\": \"v0.20.3\",\n  \"sdk\": {\n    \"source\": \"go\",\n    \"config\": {\n      \"big\": 9007199254740992,\n      \"large\": 1e+21,\n      \"negativeZero\": -0,\n      \"tiny\": 1e-7,\n      \"whole\": 1\n    }\n  },\n  \"source\": \".\"\n}\n"
+  }
+}

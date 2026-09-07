@@ -1,0 +1,2 @@
+[modules.sdk-helpers-dev]
+source = ".dagger/modules/sdk-helpers-dev"

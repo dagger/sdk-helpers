@@ -1,0 +1,9 @@
+name = "sdk-helpers-dev"
+engineVersion = "v0.21.9"
+
+[runtime]
+source = "dang"
+
+[[dependencies]]
+name = "sdk-helpers"
+source = "../../.."

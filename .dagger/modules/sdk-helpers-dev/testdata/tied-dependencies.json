@@ -1,0 +1,55 @@
+{
+  "name": "test",
+  "sdk": "go",
+  "engineVersion": "v0.21.9",
+  "dependencies": [
+    {
+      "name": "c",
+      "source": "named-c"
+    },
+    {
+      "name": "d",
+      "source": "named-d"
+    },
+    {
+      "name": "",
+      "source": "c"
+    },
+    {
+      "name": "e",
+      "source": "named-e"
+    },
+    {
+      "name": "",
+      "source": "f"
+    },
+    {
+      "name": "",
+      "source": "a"
+    },
+    {
+      "name": "f",
+      "source": "named-f"
+    },
+    {
+      "name": "",
+      "source": "d"
+    },
+    {
+      "name": "",
+      "source": "e"
+    },
+    {
+      "name": "a",
+      "source": "named-a"
+    },
+    {
+      "name": "b",
+      "source": "named-b"
+    },
+    {
+      "name": "",
+      "source": "b"
+    }
+  ]
+}
