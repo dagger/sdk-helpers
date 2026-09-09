@@ -6,7 +6,8 @@ type ManifestChecks {
       ModuleManifest()
         .withName("check")
         .withLegacyPythonRuntime(moduleSource: ".", engineVersion: "v0.20.3")
-        .tomlFile
+        .generate(self.workspace)
+        .file("dagger-module.toml")
         .contents,
     )
   }
@@ -19,7 +20,201 @@ type ManifestChecks {
         "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"python\"\n",
       ),
     )
-    self.assertNoModuleSource(loaded.tomlFile.contents)
+    self.assertNoModuleSource(loaded.generate(self.workspace).file("dagger-module.toml").contents)
+  }
+
+  """Loaded JSON pins are optional output. Other dependency settings remain intact."""
+  controlsLoadedJSONPins: Void @check {
+    let loaded = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\"," +
+        "\"sdk\":{\"source\":\"example.invalid/runtime@v1\",\"pin\":\"runtime-pin\",\"config\":{\"keep\":true}}," +
+        "\"blueprint\":{\"source\":\"example.invalid/blueprint\",\"pin\":\"blueprint-pin\"}," +
+        "\"toolchains\":[{\"source\":\"example.invalid/tools\",\"pin\":\"tools-pin\"}]," +
+        "\"dependencies\":[{\"name\":\"dep\",\"source\":\"example.invalid/dep@v1\",\"pin\":\"dep-pin\",\"ignoreChecks\":[\"slow\"]}]}"))
+    let unlocked = loaded.generate(self.workspace)
+    self.assertNoPins(unlocked)
+    self.assertContains(unlocked.file("dagger.json").contents, "\"ignoreChecks\"")
+    self.assertContains(unlocked.file("dagger.json").contents, "\"keep\": true")
+    self.assertContains(unlocked.file("dagger-module.toml").contents, "example.invalid/dep@v1")
+    let locked = loaded.generate(self.workspace, lock: true)
+    ["runtime-pin", "dep-pin"].each { pin =>
+      self.assertContains(locked.file("dagger-module.toml").contents, "pin = " + JSON.encode(pin))
+    }
+    ["runtime-pin", "dep-pin", "blueprint-pin", "tools-pin"].each { pin =>
+      self.assertContains(locked.file("dagger.json").contents, "\"pin\": " + JSON.encode(pin))
+    }
+    self.assertNoPins(loaded.generate(self.workspace))
+  }
+
+  """Loaded TOML pins are retained for locked output, including when JSON is also loaded."""
+  controlsLoadedTOMLPins: Void @check {
+    let loaded = ModuleManifest(
+      loadJSON: Dagger.file("dagger.json", "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[{\"source\":\"example.invalid/stale\",\"pin\":\"stale-pin\"}]}"),
+      loadTOML: Dagger.file("dagger-module.toml",
+        "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\npin = \"runtime-pin\"\n" +
+          "[[dependencies]]\nname = \"dep\"\nsource = \"example.invalid/dep@v1\"\npin = \"dep-pin\"\n"),
+    )
+    self.assertNoPins(loaded.generate(self.workspace))
+    let locked = loaded.generate(self.workspace, lock: true)
+    self.assertContains(locked.file("dagger-module.toml").contents, "pin = \"runtime-pin\"")
+    self.assertContains(locked.file("dagger-module.toml").contents, "pin = \"dep-pin\"")
+    self.assertContains(locked.file("dagger.json").contents, "\"pin\": \"dep-pin\"")
+    self.assertAbsent(locked.file("dagger.json").contents, "stale")
+  }
+
+  """Unlocked output does not need to resolve remote dependencies."""
+  skipsPinLookupByDefault: Void @check {
+    let loaded = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[\"example.invalid/dep@v1\",\"example.invalid/bare\",\"../local\"]}"))
+    let output = loaded.generate(self.workspace)
+    self.assertNoPins(output)
+    ["example.invalid/dep@v1", "example.invalid/bare", "../local"].each { source =>
+      self.assertContains(output.file("dagger-module.toml").contents, "source = " + JSON.encode(source))
+      self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(source))
+    }
+    null
+  }
+
+  """Local module paths are relative to each output manifest directory."""
+  placesLocalDependencies: Void @check {
+    let directory = Dagger.directory
+      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v1.0.0\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("app/keep.txt", "keep")
+    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+      .withLegacyRuntimeDependency(directory.asModuleSource(sourceRootPath: "deps/lib"))
+    let workspace = directory.asWorkspace.withWorkdir("app")
+    let output = manifest.generate(workspace, lock: true)
+    self.assertNoPins(output)
+    self.assertContains(output.file("dagger-module.toml").contents, "source = \"../deps/lib\"")
+    self.assertContains(output.file("dagger.json").contents, "\"source\": \"../deps/lib\"")
+    self.assertContains(output.file("dagger.json").contents, "\"name\": \"lib\"")
+    if (output.cwd != workspace.cwd or output.file("keep.txt").contents != "keep") {
+      raise "generation must preserve the workspace directory and other files"
+    }
+    if (workspace.directory(".").exists("dagger-module.toml")) {
+      raise "generation must preserve the input workspace"
+    }
+    self.assertContains(manifest.generate(directory.asWorkspace).file("dagger-module.toml").contents,
+      "source = \"deps/lib\"")
+    self.assertAbsent(manifest.withoutLegacyRuntimeDependency("lib")
+      .generate(workspace).file("dagger-module.toml").contents, "[[dependencies]]")
+  }
+
+  """Replacing a dependency updates its source and pin without adding a duplicate."""
+  replacesDependency: Void @check {
+    let directory = Dagger.directory
+      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("app/keep.txt", "keep")
+    let module = directory.asModuleSource(sourceRootPath: "deps/lib")
+    let ws = directory.asWorkspace.withWorkdir("app")
+    let original = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"go\",\"dependencies\":[" +
+        "{\"name\":\"lib\",\"source\":\"example.invalid/old\",\"pin\":\"old-pin\"}," +
+        "{\"name\":\"keep\",\"source\":\"../keep\"}]}"))
+    let replaced = original.withLegacyRuntimeDependency(module).withLegacyRuntimeDependency(module)
+    let output = replaced.generate(ws, lock: true)
+    let json = Dagger.json.withContents(output.file("dagger.json").contents :: Dagger.JSON!)
+    if (json.field(["dependencies"]).asArray.{{contents}}.length != 2) {
+      raise "replacement must preserve the other dependency without adding a duplicate"
+    }
+    self.assertContains(output.file("dagger.json").contents, "\"source\": \"../deps/lib\"")
+    self.assertContains(output.file("dagger-module.toml").contents, "source = \"../deps/lib\"")
+    self.assertContains(output.file("dagger-module.toml").contents, "source = \"../keep\"")
+    self.assertAbsent(output.file("dagger-module.toml").contents, "example.invalid/old")
+    self.assertNoPins(output)
+    self.assertContains(original.generate(ws, lock: true).file("dagger.json").contents, "old-pin")
+  }
+
+  """Absolute local paths are rejected when JSON or TOML is loaded."""
+  rejectsAbsoluteDependencyPaths: Void @check {
+    ["/tmp/dep", "C:/dep", "C:\\dep", "\\\\server\\dep"].each { source =>
+      let jsonError = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+        "{\"dependencies\":[{\"source\":" + JSON.encode(source) + "}]}"))
+        .withName("check").withLegacyGoRuntime.generate(self.workspace).file("dagger.json").contents rescue {
+          error: Error => error.message
+        }
+      self.assertContains(jsonError, "local dependency source must be relative")
+      let tomlError = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
+        "[[dependencies]]\nsource = " + JSON.encode(source) + "\n"))
+        .withName("check").withLegacyGoRuntime.generate(self.workspace).file("dagger-module.toml").contents rescue {
+          error: Error => error.message
+        }
+      self.assertContains(tomlError, "local dependency source must be relative")
+    }
+    null
+  }
+
+  """JSON output can be disabled without leaving an old manifest in the output workspace."""
+  controlsLegacyJSONOutput: Void @check {
+    let workspace = self.workspace.withNewFile("dagger.json", "old")
+    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+    let output = manifest.generate(workspace, legacyJson: false)
+    if (output.directory(".").exists("dagger.json") or !output.directory(".").exists("dagger-module.toml")) {
+      raise "JSON disabled must leave only the TOML manifest"
+    }
+    if (workspace.file("dagger.json").contents != "old" or output.file("keep.txt").contents != "keep") {
+      raise "generation must preserve the input workspace and other files"
+    }
+    let entrypointOnly = manifest.withoutLegacyFields.withDangEntrypoint("main.dang").generate(workspace)
+    if (entrypointOnly.directory(".").exists("dagger.json")) {
+      raise "a manifest without legacy fields must not generate dagger.json"
+    }
+    null
+  }
+
+  """A supplied Git module keeps its source and selected commit."""
+  honorsSuppliedGitModule: Void @check {
+    let module = Dagger.moduleSource("github.com/dagger/sdk-helpers@main", refPin: self.gitCommit)
+    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+      .withLegacyRuntimeDependency(module)
+    let unlocked = manifest.generate(self.workspace)
+    self.assertNoPins(unlocked)
+    self.assertContains(unlocked.file("dagger-module.toml").contents, "source = " + JSON.encode(module.asString))
+    self.assertContains(unlocked.file("dagger.json").contents, "\"name\": " + JSON.encode(module.moduleOriginalName))
+    let locked = manifest.generate(self.workspace, lock: true)
+    self.assertContains(locked.file("dagger-module.toml").contents, "pin = " + JSON.encode(self.gitCommit))
+    self.assertContains(locked.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
+  }
+
+  """Locking resolves a Git dependency that was loaded without a pin."""
+  resolvesMissingGitPins: Void @check {
+    let source = "github.com/dagger/sdk-helpers@" + self.gitCommit
+    let manifest = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n" +
+        "[[dependencies]]\nsource = " + JSON.encode(source) + "\n" +
+        "[[dependencies]]\nsource = \"../local\"\n"))
+    let output = manifest.generate(self.workspace, lock: true)
+    self.assertContains(output.file("dagger-module.toml").contents, "pin = " + JSON.encode(self.gitCommit))
+    self.assertContains(output.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
+    self.assertContains(output.file("dagger-module.toml").contents, "source = " + JSON.encode(source))
+    self.assertNoPins(manifest.generate(self.workspace))
+  }
+
+  let gitCommit: String! = "64645f1967d3dba6fce951dd61ae4acd8d9b0861"
+
+  let assertNoPins(ws: Workspace!): Void {
+    self.assertAbsent(ws.file("dagger.json").contents, "\"pin\":")
+    self.assertAbsent(ws.file("dagger-module.toml").contents, "pin =")
+  }
+
+  let assertContains(contents: String!, expected: String!): Void {
+    if (!contents.contains(expected)) {
+      raise "expected " + JSON.encode(expected) + " in:\n" + contents
+    }
+    null
+  }
+
+  let assertAbsent(contents: String!, unexpected: String!): Void {
+    if (contents.contains(unexpected)) {
+      raise "unexpected " + JSON.encode(unexpected) + " in:\n" + contents
+    }
+    null
+  }
+
+  let workspace: Workspace! {
+    Dagger.directory.withNewFile("keep.txt", "keep").asWorkspace
   }
 
   let assertNoModuleSource(contents: String!): Void {
