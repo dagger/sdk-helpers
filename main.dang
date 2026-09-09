@@ -16,6 +16,17 @@ type SdkHelpers {
   }
 }
 
+type ManifestDependency {
+  let config: String! = ""
+  let module: ModuleSource = null
+
+  new(config: String!, module: ModuleSource = null) {
+    self.config = config
+    self.module = module
+    self
+  }
+}
+
 """A Dagger module manifest."""
 type ModuleManifest {
   let name: String! = ""
@@ -25,7 +36,7 @@ type ModuleManifest {
   let legacyModuleSource: String! = ""
   let legacyEngineVersion: String! = ""
   let legacyInclude: [String!]! = []
-  let legacyRuntimeDependencies: [String!]! = []
+  let legacyRuntimeDependencies: [ManifestDependency!]! = []
   let tomlConfig: String = null
   let legacyJSONConfig: String = null
   let loadedLegacyJSON: Boolean! = false
@@ -59,16 +70,18 @@ type ModuleManifest {
 
   """Add or replace a module available to the legacy runtime."""
   withLegacyRuntimeDependency(
-    """Module source address."""
-    source: String!,
-    """Optional module name in the legacy runtime schema."""
-    name: String = null,
-    """Optional module source pin."""
-    pin: String = null,
+    """Loaded dependency. Its original name and selected commit are retained."""
+    module: ModuleSource!,
   ): ModuleManifest! {
-    let dependency = self.newDependency(name ?? "", source, pin ?? "")
+    let name = module.moduleOriginalName
+    let source = if (module.kind == ModuleSourceKind.GIT_SOURCE) {
+      module.asString
+    } else {
+      module.sourceRootSubpath
+    }
+    let dependency = ManifestDependency(self.newDependency(name, source, module.pin), module)
     let matchIndexes = legacyRuntimeDependencies.map { configured, index =>
-      if (self.dependencyMatches(configured, name ?? "", source)) { index } else { -1 }
+      if (self.dependencyMatches(configured.config, name, source)) { index } else { -1 }
     }
     let matchIndex = matchIndexes.find { index => index >= 0 }
     if (matchIndex == null) {
@@ -89,8 +102,8 @@ type ModuleManifest {
     name: String!,
   ): ModuleManifest! {
     self.legacyRuntimeDependencies = legacyRuntimeDependencies.reject { dependency =>
-      self.dependencyName(dependency) == name or
-        (self.dependencyName(dependency) == "" and self.dependencySource(dependency) == name)
+      self.dependencyName(dependency.config) == name or
+        (self.dependencyName(dependency.config) == "" and self.dependencySource(dependency.config) == name)
     }
     self
   }
@@ -261,34 +274,143 @@ type ModuleManifest {
     null
   }
 
-  """Serialize the manifest as dagger-module.toml."""
-  tomlFile: File! {
+  """Write the manifests at ws.cwd and return the modified workspace."""
+  generate(
+    """Workspace whose current directory will contain the manifests."""
+    ws: Workspace!,
+    """Write selected Git commits as pins. Preserve loaded pins and resolve missing pins."""
+    lock: Boolean! = false,
+    """Write dagger.json when legacy configuration exists. Otherwise remove it."""
+    legacyJson: Boolean! = true,
+  ): Workspace! {
     validate
-    Dagger.file("dagger-module.toml", self.tomlContents)
-  }
-
-  """Serialize the legacy fields as dagger.json."""
-  # Separate acronym letters to preserve the public GraphQL name.
-  legacyJ_S_O_N_File: File! {
-    validate
-    if (legacyRuntime == "" and !loadedLegacyJSON) {
-      raise "module manifest has no legacy runtime"
-    }
-    Dagger.file("dagger.json", self.legacyJSONContents)
-  }
-
-  """Return a directory with all applicable manifest files."""
-  directory: Directory! {
-    validate
-    let output = Dagger.directory.withNewFile(
+    let writeJSON = legacyJson and (legacyRuntime != "" or loadedLegacyJSON)
+    let prepared = self.prepareOutput(ws, lock, writeJSON)
+    let output = ws.withNewFile(
       "dagger-module.toml",
-      self.tomlContents,
+      prepared.tomlContents,
       permissions: 420,
     )
-    if (legacyRuntime != "" or loadedLegacyJSON) {
-      output.withNewFile("dagger.json", self.legacyJSONContents, permissions: 420)
+    if (writeJSON) {
+      output.withNewFile("dagger.json", prepared.legacyJSONContents, permissions: 420)
+    } else if (output.directory(".").exists("dagger.json")) {
+      output.withoutFile("dagger.json")
     } else {
       output
+    }
+  }
+
+  let prepareOutput(ws: Workspace!, lock: Boolean!, legacyJSON: Boolean!): ModuleManifest! {
+    self.legacyRuntimeDependencies = legacyRuntimeDependencies.map { dependency =>
+      let module = dependency.module
+      let source = if (module != null and module.kind != ModuleSourceKind.GIT_SOURCE) {
+        let relative = Path(self.normalizePath(module.sourceRootSubpath))
+          .relativeTo(Path(self.normalizePath(ws.cwd)))
+        if (relative == null) {
+          raise "cannot make dependency path relative to the manifest directory"
+        }
+        relative.string
+      } else {
+        self.dependencySource(dependency.config)
+      }
+      self.validateDependencySource(source)
+      let pin = if (module != null) {
+        if (lock) { module.pin } else { "" }
+      } else {
+        self.outputPin(ws, source, self.dependencyPin(dependency.config), lock)
+      }
+      ManifestDependency(self.withSourceAndPin(dependency.config, source, pin))
+    }
+    self.tomlConfig = self.prepareConfig(tomlConfig, ws, lock, false)
+    if (legacyJSON) {
+      self.legacyJSONConfig = self.prepareConfig(legacyJSONConfig, ws, lock, true)
+    }
+    self
+  }
+
+  let prepareConfig(config: String, ws: Workspace!, lock: Boolean!, legacyJSON: Boolean!): String {
+    if (config == null) {
+      null
+    } else {
+      self.jsonObject(self.jsonValue(config).fields.map { field =>
+        let raw = self.rawFieldOrNull(config, field)
+        let value = if ((field == "sdk" or field == "runtime") and raw != "null") {
+          let source = self.sdkSource(raw)
+          let storedPin = if (raw.hasPrefix("\"")) { "" } else { self.stringField(raw, "pin") }
+          let pin = if (source == legacyRuntime) {
+            if (self.isBuiltinRuntime(source)) {
+              if (lock) { storedPin } else { "" }
+            } else {
+              self.outputPin(ws, source, storedPin, lock)
+            }
+          } else { "" }
+          self.withSourceAndPin(raw, source, pin)
+        } else if (legacyJSON and field == "blueprint" and raw != "null") {
+          self.prepareLoadedDependency(raw, ws, lock)
+        } else if (legacyJSON and field == "toolchains") {
+          self.jsonArray(self.rawListField(config, field).filter { item => item != "null" }.map { item =>
+            self.prepareLoadedDependency(item, ws, lock)
+          })
+        } else { raw }
+        self.jsonMember(field, value)
+      })
+    }
+  }
+
+  let prepareLoadedDependency(dependency: String!, ws: Workspace!, lock: Boolean!): String! {
+    let source = self.dependencySource(dependency)
+    self.validateDependencySource(source)
+    self.withSourceAndPin(dependency, source, self.outputPin(ws, source, self.dependencyPin(dependency), lock))
+  }
+
+  let outputPin(ws: Workspace!, source: String!, pin: String!, lock: Boolean!): String! {
+    if (!lock) {
+      ""
+    } else if (pin != "") {
+      pin
+    } else if (self.isLocalSource(source, ws)) {
+      ""
+    } else {
+      Dagger.moduleSource(source, requireKind: ModuleSourceKind.GIT_SOURCE).pin
+    }
+  }
+
+  let withSourceAndPin(config: String!, source: String!, pin: String!): String! {
+    let fields = if (config.hasPrefix("\"")) {
+      [] :: [String!]!
+    } else {
+      self.jsonValue(config).fields.reject { field => field == "source" or field == "pin" }.map { field =>
+        self.jsonMember(field, self.rawFieldOrNull(config, field))
+      }
+    }
+    self.jsonObject(fields + [self.jsonMember("source", JSON.encode(source))] +
+      self.optionalJSONMember("pin", JSON.encode(pin), pin != ""))
+  }
+
+  let normalizePath(path: String!): String! {
+    let trimmed = path.trimPrefix("/").trimPrefix("./").trimSuffix("/")
+    if (trimmed == "") { "." } else { trimmed }
+  }
+
+  let validateDependencySource(source: String!): Void {
+    let drive = source.split(":")[0] ?? ""
+    let drivePath = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").contains(drive) and
+      (source.contains(":/") or source.contains(":\\"))
+    if (source.hasPrefix("/") or source.hasPrefix("\\") or drivePath) {
+      raise "local dependency source must be relative to the manifest file: " + source
+    }
+    null
+  }
+
+  let isLocalSource(source: String!, ws: Workspace!): Boolean! {
+    if (source.hasPrefix(".")) {
+      true
+    } else if (source.contains(":") or source.contains("@")) {
+      false
+    } else if (!source.contains(".")) {
+      true
+    } else {
+      ws.directory(".").exists(source)
     }
   }
 
@@ -375,7 +497,7 @@ type ModuleManifest {
       }
     self.legacyRuntimeDependencies = self.rawListField(config, "dependencies").filter { raw =>
       raw != "null"
-    }
+    }.map { raw => ManifestDependency(raw) }
     let sdk = self.baseSDK(config)
     self.legacyRuntime = self.sdkSource(sdk)
     if (self.sdkSource(sdk) != "" and self.stringField(config, "source") == "") {
@@ -393,7 +515,7 @@ type ModuleManifest {
     self.stringField(config, "source")
     let sdk = self.baseSDK(config)
     if (sdk != "null") {
-      self.sdkSource(sdk)
+      self.validateDependencySource(self.sdkSource(sdk))
       if (!sdk.hasPrefix("\"")) {
         self.stringField(sdk, "pin")
         let sdkConfig = self.rawField(sdk, "config")
@@ -493,7 +615,8 @@ type ModuleManifest {
           (if (pin == "") { "" } else { "\n  pin = " + self.tomlString(pin) }),
       ]
     }
-    let dependencyTables = legacyRuntimeDependencies.map { dependency =>
+    let dependencyTables = legacyRuntimeDependencies.map { configured =>
+      let dependency = configured.config
       let dependencyName = self.dependencyName(dependency)
       "[[dependencies]]\n" +
         (if (dependencyName == "") { "" } else { "  name = " + self.tomlString(dependencyName) + "\n" }) +
@@ -529,7 +652,7 @@ type ModuleManifest {
     let toolchains = self.rawListFieldOrEmpty(base, "toolchains").filter { raw =>
       raw != "null"
     }.map { raw => self.dependencyJSON(raw, true) }
-    let dependencies = legacyRuntimeDependencies.map { raw => self.dependencyJSON(raw, true) }
+    let dependencies = legacyRuntimeDependencies.map { dependency => self.dependencyJSON(dependency.config, true) }
     let codegen = self.rawFieldOrNull(base, "codegen")
     let clients = self.rawListFieldOrEmpty(base, "clients").filter { raw =>
       raw != "null"
@@ -589,6 +712,7 @@ type ModuleManifest {
   let dependencyJSON(dependency: String!, includeLegacyFields: Boolean!): String! {
     let name = self.dependencyName(dependency)
     let source = self.dependencySource(dependency)
+    self.validateDependencySource(source)
     let pin = self.dependencyPin(dependency)
     let isObject = !dependency.hasPrefix("\"")
     let customizations = if (includeLegacyFields and isObject) {
@@ -906,11 +1030,11 @@ type ModuleManifest {
     toString(self.jsonValue(self.jsonObject(fields)).contents)
   }
 
-  let sortDependencies(dependencies: [String!]!): [String!]! {
-    dependencies.reduce([] :: [String!]!) { sorted, dependency =>
-      let key = self.dependencyKey(dependency)
-      let before = sorted.filter { configured => self.dependencyKey(configured) <= key }
-      let after = sorted.reject { configured => self.dependencyKey(configured) <= key }
+  let sortDependencies(dependencies: [ManifestDependency!]!): [ManifestDependency!]! {
+    dependencies.reduce([] :: [ManifestDependency!]!) { sorted, dependency =>
+      let key = self.dependencyKey(dependency.config)
+      let before = sorted.filter { configured => self.dependencyKey(configured.config) <= key }
+      let after = sorted.reject { configured => self.dependencyKey(configured.config) <= key }
       before + [dependency] + after
     }
   }

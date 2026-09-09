@@ -1,0 +1,41 @@
+"""Check the public manifest API and its SDK callers."""
+type E2e {
+  """Generate Go modules and clients with this checkout and the migrated Go SDK."""
+  goSdkCheck(ws: Workspace!): Void @check {
+    let sdk = git("https://github.com/dagger/go-sdk")
+      .commit("fef4ddfc4d6ec0ffa2c0aa3361f5466d800d4069").tree
+      .withoutFile("dagger.toml")
+      .withoutDirectory(".git")
+    let cliArchive = http("https://dl.dagger.io/dagger/releases/1.0.0-beta.11/dagger_v1.0.0-beta.11_linux_amd64.tar.gz")
+    let tested = container(platform: "linux/amd64")
+      .from("alpine:3.22.1")
+      .withExec(["apk", "add", "--no-cache", "git", "ca-certificates"])
+      .withFile("/dagger.tar.gz", cliArchive)
+      .withExec(["tar", "-xzf", "/dagger.tar.gz", "-C", "/usr/local/bin", "dagger"])
+      .withDirectory("/test/go-sdk", sdk)
+      .withDirectory("/test/sdk-helpers", ws.directory("/", include: ["*.dang", "dagger.json"]))
+      .withDirectory("/test", currentModule.source.directory("fixtures/go-sdk"))
+      .withFile("/test/go-sdk.patch", currentModule.source.file("go-sdk.patch"))
+      .withWorkdir("/test/go-sdk")
+      .withExec(["git", "apply", "/test/go-sdk.patch"])
+      .withWorkdir("/test")
+      .withExec(["git", "init", "--quiet"])
+      .withExec(["dagger", "--progress", "plain", "check", "--no-generate"], experimentalPrivilegedNesting: true)
+    tested.sync
+    null
+  }
+
+  """A caller that selects the v0.21 API can use the helper on the current engine."""
+  legacyCallerCheck(ws: Workspace!): Void @check {
+    let output = legacyCaller.generate(ws)
+    self.assert(output.file("dagger-module.toml").contents.contains("engineVersion = \"v0.21.9\""),
+      "the legacy caller did not retain its module engine version")
+    self.assert(output.file("dagger.json").contents.contains("\"name\": \"legacy-caller\""),
+      "the legacy caller did not generate JSON")
+  }
+
+  let assert(condition: Boolean!, message: String!): Void {
+    if (!condition) { raise message }
+    null
+  }
+}

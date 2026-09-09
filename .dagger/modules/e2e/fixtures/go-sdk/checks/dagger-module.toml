@@ -1,0 +1,9 @@
+name = "sdk-checks"
+engineVersion = "v1.0.0"
+
+[runtime]
+source = "dang"
+
+[[dependencies]]
+name = "go-sdk"
+source = "../go-sdk"

@@ -1,0 +1,9 @@
+"""Call the helper from a module that selects the v0.21 API."""
+type LegacyCaller {
+  generate(ws: Workspace!): Workspace! {
+    sdkHelpers.moduleManifest
+      .withName("legacy-caller")
+      .withLegacyGoRuntime(engineVersion: "v0.21.9")
+      .generate(ws)
+  }
+}
