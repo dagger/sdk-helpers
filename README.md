@@ -40,12 +40,12 @@ A pin is a separate manifest field that stores a selected Git commit.
 
 By default, generated JSON and TOML have no dependency or runtime pin fields.
 Legacy JSON blueprint and toolchain pins are also omitted. Sources stay intact,
-so a commit in the source still selects that commit. Generation does not look
-up missing pins with `lock: false`.
+so a commit in the source still selects that commit.
 
 With `lock: true`, the helper uses the selected commit from each supplied
-`ModuleSource`. For dependencies loaded from JSON or TOML, it preserves existing
-pins and resolves missing Git pins. Local dependencies need no pin.
+`ModuleSource`. Local module sources return an empty pin. For dependencies loaded
+from JSON or TOML, it preserves existing pins and leaves missing pins absent.
+Generation does not resolve sources or look up missing pins.
 
 Loaded pins remain internal to `ModuleManifest`. Generation does not remove
 them from that object. The same object can generate output with or without pins.

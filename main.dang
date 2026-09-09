@@ -278,7 +278,7 @@ type ModuleManifest {
   generate(
     """Workspace whose current directory will contain the manifests."""
     ws: Workspace!,
-    """Write selected Git commits as pins. Preserve loaded pins and resolve missing pins."""
+    """Write pins from supplied module sources and preserve loaded pins."""
     lock: Boolean! = false,
     """Write dagger.json when legacy configuration exists. Otherwise remove it."""
     legacyJson: Boolean! = true,
@@ -316,19 +316,19 @@ type ModuleManifest {
       self.validateDependencySource(source)
       let pin = if (module != null) {
         if (lock) { module.pin } else { "" }
-      } else {
-        self.outputPin(ws, source, self.dependencyPin(dependency.config), lock)
-      }
+      } else if (lock) {
+        self.dependencyPin(dependency.config)
+      } else { "" }
       ManifestDependency(self.withSourceAndPin(dependency.config, source, pin))
     }
-    self.tomlConfig = self.prepareConfig(tomlConfig, ws, lock, false)
+    self.tomlConfig = self.prepareConfig(tomlConfig, lock, false)
     if (legacyJSON) {
-      self.legacyJSONConfig = self.prepareConfig(legacyJSONConfig, ws, lock, true)
+      self.legacyJSONConfig = self.prepareConfig(legacyJSONConfig, lock, true)
     }
     self
   }
 
-  let prepareConfig(config: String, ws: Workspace!, lock: Boolean!, legacyJSON: Boolean!): String {
+  let prepareConfig(config: String, lock: Boolean!, legacyJSON: Boolean!): String {
     if (config == null) {
       null
     } else {
@@ -337,19 +337,13 @@ type ModuleManifest {
         let value = if ((field == "sdk" or field == "runtime") and raw != "null") {
           let source = self.sdkSource(raw)
           let storedPin = if (raw.hasPrefix("\"")) { "" } else { self.stringField(raw, "pin") }
-          let pin = if (source == legacyRuntime) {
-            if (self.isBuiltinRuntime(source)) {
-              if (lock) { storedPin } else { "" }
-            } else {
-              self.outputPin(ws, source, storedPin, lock)
-            }
-          } else { "" }
+          let pin = if (lock and source == legacyRuntime) { storedPin } else { "" }
           self.withSourceAndPin(raw, source, pin)
         } else if (legacyJSON and field == "blueprint" and raw != "null") {
-          self.prepareLoadedDependency(raw, ws, lock)
+          self.prepareLoadedDependency(raw, lock)
         } else if (legacyJSON and field == "toolchains") {
           self.jsonArray(self.rawListField(config, field).filter { item => item != "null" }.map { item =>
-            self.prepareLoadedDependency(item, ws, lock)
+            self.prepareLoadedDependency(item, lock)
           })
         } else { raw }
         self.jsonMember(field, value)
@@ -357,22 +351,11 @@ type ModuleManifest {
     }
   }
 
-  let prepareLoadedDependency(dependency: String!, ws: Workspace!, lock: Boolean!): String! {
+  let prepareLoadedDependency(dependency: String!, lock: Boolean!): String! {
     let source = self.dependencySource(dependency)
     self.validateDependencySource(source)
-    self.withSourceAndPin(dependency, source, self.outputPin(ws, source, self.dependencyPin(dependency), lock))
-  }
-
-  let outputPin(ws: Workspace!, source: String!, pin: String!, lock: Boolean!): String! {
-    if (!lock) {
-      ""
-    } else if (pin != "") {
-      pin
-    } else if (self.isLocalSource(source, ws)) {
-      ""
-    } else {
-      Dagger.moduleSource(source, requireKind: ModuleSourceKind.GIT_SOURCE).pin
-    }
+    let pin = if (lock) { self.dependencyPin(dependency) } else { "" }
+    self.withSourceAndPin(dependency, source, pin)
   }
 
   let withSourceAndPin(config: String!, source: String!, pin: String!): String! {
@@ -400,18 +383,6 @@ type ModuleManifest {
       raise "local dependency source must be relative to the manifest file: " + source
     }
     null
-  }
-
-  let isLocalSource(source: String!, ws: Workspace!): Boolean! {
-    if (source.hasPrefix(".")) {
-      true
-    } else if (source.contains(":") or source.contains("@")) {
-      false
-    } else if (!source.contains(".")) {
-      true
-    } else {
-      ws.directory(".").exists(source)
-    }
   }
 
   let withEntrypoint(kind: String!, source: String!): ModuleManifest! {

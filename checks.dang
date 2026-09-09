@@ -62,15 +62,25 @@ type ManifestChecks {
     self.assertAbsent(locked.file("dagger.json").contents, "stale")
   }
 
-  """Unlocked output does not need to resolve remote dependencies."""
-  skipsPinLookupByDefault: Void @check {
-    let loaded = ModuleManifest(loadJSON: Dagger.file("dagger.json",
-      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[\"example.invalid/dep@v1\",\"example.invalid/bare\",\"../local\"]}"))
-    let output = loaded.generate(self.workspace)
-    self.assertNoPins(output)
-    ["example.invalid/dep@v1", "example.invalid/bare", "../local"].each { source =>
-      self.assertContains(output.file("dagger-module.toml").contents, "source = " + JSON.encode(source))
-      self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(source))
+  """Generation preserves loaded sources without resolving missing pins."""
+  skipsPinLookup: Void @check {
+    ["example.invalid/dep@v1", "example.invalid/bare", "deps/lib@v1.2",
+      "@scope/lib", "deps/lib:dev", "../local"].each { source =>
+      let encoded = JSON.encode(source)
+      let json = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+        "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":" + encoded +
+          ",\"dependencies\":[{\"source\":" + encoded + "}],\"blueprint\":{\"source\":" + encoded +
+          "},\"toolchains\":[{\"source\":" + encoded + "}]}"))
+      let toml = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
+        "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = " + encoded +
+          "\n[[dependencies]]\nsource = " + encoded + "\n"))
+      [json, toml].each { manifest =>
+        [manifest.generate(self.workspace), manifest.generate(self.workspace, lock: true)].each { output =>
+          self.assertNoPins(output)
+          self.assertContains(output.file("dagger-module.toml").contents, "source = " + encoded)
+          self.assertContains(output.file("dagger.json").contents, "\"source\": " + encoded)
+        }
+      }
     }
     null
   }
@@ -78,16 +88,16 @@ type ManifestChecks {
   """Local module paths are relative to each output manifest directory."""
   placesLocalDependencies: Void @check {
     let directory = Dagger.directory
-      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v1.0.0\",\"sdk\":\"dang\"}")
-      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("deps/lib@v1.2/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v1.0.0\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib@v1.2/main.dang", "type Lib { hello: String! { \"hello\" } }")
       .withNewFile("app/keep.txt", "keep")
     let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
-      .withLegacyRuntimeDependency(directory.asModuleSource(sourceRootPath: "deps/lib"))
+      .withLegacyRuntimeDependency(directory.asModuleSource(sourceRootPath: "deps/lib@v1.2"))
     let workspace = directory.asWorkspace.withWorkdir("app")
     let output = manifest.generate(workspace, lock: true)
     self.assertNoPins(output)
-    self.assertContains(output.file("dagger-module.toml").contents, "source = \"../deps/lib\"")
-    self.assertContains(output.file("dagger.json").contents, "\"source\": \"../deps/lib\"")
+    self.assertContains(output.file("dagger-module.toml").contents, "source = \"../deps/lib@v1.2\"")
+    self.assertContains(output.file("dagger.json").contents, "\"source\": \"../deps/lib@v1.2\"")
     self.assertContains(output.file("dagger.json").contents, "\"name\": \"lib\"")
     if (output.cwd != workspace.cwd or output.file("keep.txt").contents != "keep") {
       raise "generation must preserve the workspace directory and other files"
@@ -96,7 +106,7 @@ type ManifestChecks {
       raise "generation must preserve the input workspace"
     }
     self.assertContains(manifest.generate(directory.asWorkspace).file("dagger-module.toml").contents,
-      "source = \"deps/lib\"")
+      "source = \"deps/lib@v1.2\"")
     self.assertAbsent(manifest.withoutLegacyRuntimeDependency("lib")
       .generate(workspace).file("dagger-module.toml").contents, "[[dependencies]]")
   }
@@ -176,20 +186,6 @@ type ManifestChecks {
     let locked = manifest.generate(self.workspace, lock: true)
     self.assertContains(locked.file("dagger-module.toml").contents, "pin = " + JSON.encode(self.gitCommit))
     self.assertContains(locked.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
-  }
-
-  """Locking resolves a Git dependency that was loaded without a pin."""
-  resolvesMissingGitPins: Void @check {
-    let source = "github.com/dagger/sdk-helpers@" + self.gitCommit
-    let manifest = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
-      "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n" +
-        "[[dependencies]]\nsource = " + JSON.encode(source) + "\n" +
-        "[[dependencies]]\nsource = \"../local\"\n"))
-    let output = manifest.generate(self.workspace, lock: true)
-    self.assertContains(output.file("dagger-module.toml").contents, "pin = " + JSON.encode(self.gitCommit))
-    self.assertContains(output.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
-    self.assertContains(output.file("dagger-module.toml").contents, "source = " + JSON.encode(source))
-    self.assertNoPins(manifest.generate(self.workspace))
   }
 
   let gitCommit: String! = "64645f1967d3dba6fce951dd61ae4acd8d9b0861"
