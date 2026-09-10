@@ -1,5 +1,6 @@
-[modules.sdk-helpers]
-source = "."
+[modules.sdk-helpers-dev]
+source = ".dagger/modules/sdk-helpers-dev"
+entrypoint = true
 
 [modules.e2e]
 source = ".dagger/modules/e2e"

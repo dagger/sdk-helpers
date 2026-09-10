@@ -1,9 +1,9 @@
-"""Checks for the module manifest serializer."""
-type ManifestChecks {
+"""Development module for sdk-helpers"""
+type SdkHelpersDev {
   """A module source of "." is the default, so it is not written to dagger-module.toml."""
   omitsDefaultModuleSource: Void @check {
     self.assertNoModuleSource(
-      ModuleManifest()
+      sdkHelpers.moduleManifest()
         .withName("check")
         .withLegacyPythonRuntime(moduleSource: ".", engineVersion: "v0.20.3")
         .generate(self.workspace)
@@ -14,8 +14,8 @@ type ManifestChecks {
 
   """A manifest loaded without a module source does not gain one when written back."""
   keepsLoadedModuleSourceUnset: Void @check {
-    let loaded = ModuleManifest(
-      loadTOML: Dagger.file(
+    let loaded = sdkHelpers.moduleManifest(
+      loadToml: Dagger.file(
         "dagger-module.toml",
         "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"python\"\n",
       ),
@@ -25,7 +25,7 @@ type ManifestChecks {
 
   """Loaded JSON pins are optional output. Other dependency settings remain intact."""
   controlsLoadedJSONPins: Void @check {
-    let loaded = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+    let loaded = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
       "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\"," +
         "\"sdk\":{\"source\":\"example.invalid/runtime@v1\",\"pin\":\"runtime-pin\",\"config\":{\"keep\":true}}," +
         "\"blueprint\":{\"source\":\"example.invalid/blueprint\",\"pin\":\"blueprint-pin\"}," +
@@ -48,9 +48,9 @@ type ManifestChecks {
 
   """Loaded TOML pins are retained for locked output, including when JSON is also loaded."""
   controlsLoadedTOMLPins: Void @check {
-    let loaded = ModuleManifest(
-      loadJSON: Dagger.file("dagger.json", "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[{\"source\":\"example.invalid/stale\",\"pin\":\"stale-pin\"}]}"),
-      loadTOML: Dagger.file("dagger-module.toml",
+    let loaded = sdkHelpers.moduleManifest(
+      loadJson: Dagger.file("dagger.json", "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[{\"source\":\"example.invalid/stale\",\"pin\":\"stale-pin\"}]}"),
+      loadToml: Dagger.file("dagger-module.toml",
         "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\npin = \"runtime-pin\"\n" +
           "[[dependencies]]\nname = \"dep\"\nsource = \"example.invalid/dep@v1\"\npin = \"dep-pin\"\n"),
     )
@@ -67,11 +67,11 @@ type ManifestChecks {
     ["example.invalid/dep@v1", "example.invalid/bare", "deps/lib@v1.2",
       "@scope/lib", "deps/lib:dev", "../local"].each { source =>
       let encoded = JSON.encode(source)
-      let json = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+      let json = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
         "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":" + encoded +
           ",\"dependencies\":[{\"source\":" + encoded + "}],\"blueprint\":{\"source\":" + encoded +
           "},\"toolchains\":[{\"source\":" + encoded + "}]}"))
-      let toml = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
+      let toml = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
         "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = " + encoded +
           "\n[[dependencies]]\nsource = " + encoded + "\n"))
       [json, toml].each { manifest =>
@@ -91,7 +91,7 @@ type ManifestChecks {
       .withNewFile("deps/lib@v1.2/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v1.0.0\",\"sdk\":\"dang\"}")
       .withNewFile("deps/lib@v1.2/main.dang", "type Lib { hello: String! { \"hello\" } }")
       .withNewFile("app/keep.txt", "keep")
-    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+    let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
       .withLegacyRuntimeDependency(directory.asModuleSource(sourceRootPath: "deps/lib@v1.2"))
     let workspace = directory.asWorkspace.withWorkdir("app")
     let output = manifest.generate(workspace, lock: true)
@@ -119,7 +119,7 @@ type ManifestChecks {
       .withNewFile("app/keep.txt", "keep")
     let module = directory.asModuleSource(sourceRootPath: "deps/lib")
     let ws = directory.asWorkspace.withWorkdir("app")
-    let original = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+    let original = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
       "{\"name\":\"check\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"go\",\"dependencies\":[" +
         "{\"name\":\"lib\",\"source\":\"example.invalid/old\",\"pin\":\"old-pin\"}," +
         "{\"name\":\"keep\",\"source\":\"../keep\"}]}"))
@@ -140,13 +140,13 @@ type ManifestChecks {
   """Absolute local paths are rejected when JSON or TOML is loaded."""
   rejectsAbsoluteDependencyPaths: Void @check {
     ["/tmp/dep", "C:/dep", "C:\\dep", "\\\\server\\dep"].each { source =>
-      let jsonError = ModuleManifest(loadJSON: Dagger.file("dagger.json",
+      let jsonError = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
         "{\"dependencies\":[{\"source\":" + JSON.encode(source) + "}]}"))
         .withName("check").withLegacyGoRuntime.generate(self.workspace).file("dagger.json").contents rescue {
           error: Error => error.message
         }
       self.assertContains(jsonError, "local dependency source must be relative")
-      let tomlError = ModuleManifest(loadTOML: Dagger.file("dagger-module.toml",
+      let tomlError = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
         "[[dependencies]]\nsource = " + JSON.encode(source) + "\n"))
         .withName("check").withLegacyGoRuntime.generate(self.workspace).file("dagger-module.toml").contents rescue {
           error: Error => error.message
@@ -159,7 +159,7 @@ type ManifestChecks {
   """JSON output can be disabled without leaving an old manifest in the output workspace."""
   controlsLegacyJSONOutput: Void @check {
     let workspace = self.workspace.withNewFile("dagger.json", "old")
-    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+    let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
     let output = manifest.generate(workspace, legacyJson: false)
     if (output.directory(".").exists("dagger.json") or !output.directory(".").exists("dagger-module.toml")) {
       raise "JSON disabled must leave only the TOML manifest"
@@ -177,7 +177,7 @@ type ManifestChecks {
   """A supplied Git module keeps its source and selected commit."""
   honorsSuppliedGitModule: Void @check {
     let module = Dagger.moduleSource("github.com/dagger/sdk-helpers@main", refPin: self.gitCommit)
-    let manifest = ModuleManifest().withName("check").withLegacyGoRuntime
+    let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
       .withLegacyRuntimeDependency(module)
     let unlocked = manifest.generate(self.workspace)
     self.assertNoPins(unlocked)
