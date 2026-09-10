@@ -9,11 +9,6 @@ type SdkHelpers {
   ): ModuleManifest! {
     ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
   }
-
-  """Checks for the module manifest serializer."""
-  manifestChecks: ManifestChecks! {
-    ManifestChecks()
-  }
 }
 
 type ManifestDependency {

@@ -13,7 +13,7 @@ type E2e {
       .withFile("/dagger.tar.gz", cliArchive)
       .withExec(["tar", "-xzf", "/dagger.tar.gz", "-C", "/usr/local/bin", "dagger"])
       .withDirectory("/test/go-sdk", sdk)
-      .withDirectory("/test/sdk-helpers", ws.directory("/", include: ["*.dang", "dagger.json"]))
+      .withDirectory("/test/sdk-helpers", ws.directory("/", include: ["*.dang", "dagger-module.toml", "dagger.json"]))
       .withDirectory("/test", currentModule.source.directory("fixtures/go-sdk"))
       .withFile("/test/go-sdk.patch", currentModule.source.file("go-sdk.patch"))
       .withWorkdir("/test/go-sdk")
