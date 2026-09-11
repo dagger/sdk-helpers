@@ -9,6 +9,23 @@ type SdkHelpers {
   ): ModuleManifest! {
     ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
   }
+
+  """
+  Load the module manifests in Workspace.cwd.
+
+  Both dagger-module.toml and dagger.json are loaded when present. The manifest
+  is empty when neither file exists.
+  """
+  loadModuleManifest(
+    """Workspace whose current directory holds the manifests."""
+    ws: Workspace!,
+  ): ModuleManifest! {
+    let dir = ws.directory(".", include: ["dagger-module.toml", "dagger.json"])
+    ModuleManifest(
+      loadTOML: if (dir.exists("dagger-module.toml")) { dir.file("dagger-module.toml") } else { null },
+      loadJSON: if (dir.exists("dagger.json")) { dir.file("dagger.json") } else { null },
+    )
+  }
 }
 
 type ManifestDependency {
@@ -32,6 +49,7 @@ type ModuleManifest {
   let legacyEngineVersion: String! = ""
   let legacyInclude: [String!]! = []
   let legacyRuntimeDependencies: [ManifestDependency!]! = []
+  let replacedRuntimeDependencies: [ManifestDependency!]! = []
   let tomlConfig: String = null
   let legacyJSONConfig: String = null
   let loadedLegacyJSON: Boolean! = false
@@ -63,7 +81,12 @@ type ModuleManifest {
     self
   }
 
-  """Add or replace a module available to the legacy runtime."""
+  """
+  Add or replace a module available to the legacy runtime.
+
+  A dependency with the same name is replaced. A loaded dependency with the same
+  source is replaced during generation, and its name and settings are kept.
+  """
   withLegacyRuntimeDependency(
     """Loaded dependency. Its original name and selected commit are retained."""
     module: ModuleSource!,
@@ -84,11 +107,31 @@ type ModuleManifest {
         legacyRuntimeDependencies + [dependency],
       )
     } else {
+      self.replacedRuntimeDependencies = replacedRuntimeDependencies +
+        legacyRuntimeDependencies.filter { configured =>
+          configured.module == null and self.dependencyMatches(configured.config, name, source)
+        }
       self.legacyRuntimeDependencies = legacyRuntimeDependencies.map { configured, index =>
         if (index == matchIndex) { dependency } else { configured }
       }
     }
     self
+  }
+
+  """
+  Set the complete list of modules available to the legacy runtime.
+
+  Loaded dependencies that are not in the list are removed. A loaded dependency
+  with the same source as a listed module keeps its name and settings.
+  """
+  withLegacyRuntimeDependencies(
+    """Modules to depend on."""
+    modules: [ModuleSource!]!,
+  ): ModuleManifest! {
+    self.replacedRuntimeDependencies = replacedRuntimeDependencies +
+      legacyRuntimeDependencies.filter { configured => configured.module == null }
+    self.legacyRuntimeDependencies = []
+    modules.reduce(self) { manifest, module => manifest.withLegacyRuntimeDependency(module: module) }
   }
 
   """Remove a module from the legacy runtime by name."""
@@ -106,6 +149,7 @@ type ModuleManifest {
   """Remove all modules from the legacy runtime."""
   withoutLegacyRuntimeDependencies: ModuleManifest! {
     self.legacyRuntimeDependencies = []
+    self.replacedRuntimeDependencies = []
     self
   }
 
@@ -127,73 +171,73 @@ type ModuleManifest {
 
   """Add the legacy Go runtime."""
   withLegacyGoRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("go", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("go", moduleSource, engineVersion)
   }
 
   """Add the legacy Dang runtime."""
   withLegacyDangRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("dang", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("dang", moduleSource, engineVersion)
   }
 
   """Add the legacy Python runtime."""
   withLegacyPythonRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("python", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("python", moduleSource, engineVersion)
   }
 
   """Add the legacy TypeScript runtime."""
   withLegacyTypescriptRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("typescript", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("typescript", moduleSource, engineVersion)
   }
 
   """Add the legacy PHP runtime."""
   # Separate acronym letters to preserve the public GraphQL name.
   withLegacyP_H_P_Runtime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("php", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("php", moduleSource, engineVersion)
   }
 
   """Add the legacy Elixir runtime."""
   withLegacyElixirRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("elixir", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("elixir", moduleSource, engineVersion)
   }
 
   """Add the legacy Java runtime."""
   withLegacyJavaRuntime(
-    """Module source path. The default is the manifest directory."""
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
-    """Required engine API version. The default is the running engine version."""
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
     engineVersion: String = null,
   ): ModuleManifest! {
-    self.withLegacyRuntime("java", moduleSource ?? "", engineVersion ?? "")
+    self.withLegacyRuntime("java", moduleSource, engineVersion)
   }
 
   """
@@ -216,6 +260,7 @@ type ModuleManifest {
     self.legacyEngineVersion = ""
     self.legacyInclude = []
     self.legacyRuntimeDependencies = []
+    self.replacedRuntimeDependencies = []
     self.loadedLegacyJSON = false
     self
   }
@@ -296,7 +341,9 @@ type ModuleManifest {
   }
 
   let prepareOutput(ws: Workspace!, lock: Boolean!, legacyJSON: Boolean!): ModuleManifest! {
-    self.legacyRuntimeDependencies = legacyRuntimeDependencies.map { dependency =>
+    let loaded = replacedRuntimeDependencies +
+      legacyRuntimeDependencies.filter { dependency => dependency.module == null }
+    let prepared = legacyRuntimeDependencies.map { dependency =>
       let module = dependency.module
       let source = if (module != null and module.kind != ModuleSourceKind.GIT_SOURCE) {
         let relative = Path(self.normalizePath(module.sourceRootSubpath))
@@ -314,7 +361,25 @@ type ModuleManifest {
       } else if (lock) {
         self.dependencyPin(dependency.config)
       } else { "" }
-      ManifestDependency(self.withSourceAndPin(dependency.config, source, pin))
+      let existing = if (module == null) {
+        null
+      } else {
+        loaded.find { configured => self.sameDependencySource(self.dependencySource(configured.config), source) }
+      }
+      let config = if (existing == null) {
+        dependency.config
+      } else {
+        self.adoptedDependency(existing.config, self.dependencyName(dependency.config))
+      }
+      ManifestDependency(self.withSourceAndPin(config, source, pin), module)
+    }
+    let suppliedSources = prepared.filter { dependency => dependency.module != null }.map { dependency =>
+      self.dependencySource(dependency.config)
+    }
+    self.legacyRuntimeDependencies = prepared.reject { dependency =>
+      dependency.module == null and !suppliedSources.filter { source =>
+        self.sameDependencySource(self.dependencySource(dependency.config), source)
+      }.isEmpty
     }
     self.tomlConfig = self.prepareConfig(tomlConfig, lock, false)
     if (legacyJSON) {
@@ -365,6 +430,25 @@ type ModuleManifest {
       self.optionalJSONMember("pin", JSON.encode(pin), pin != ""))
   }
 
+  let sameDependencySource(left: String!, right: String!): Boolean! {
+    self.normalizePath(left) == self.normalizePath(right)
+  }
+
+  let adoptedDependency(configured: String!, name: String!): String! {
+    if (self.dependencyName(configured) != "") {
+      configured
+    } else {
+      let fields = if (configured.hasPrefix("\"")) {
+        [self.jsonMember("source", configured)]
+      } else {
+        self.jsonValue(configured).fields.reject { field => field == "name" }.map { field =>
+          self.jsonMember(field, self.rawFieldOrNull(configured, field))
+        }
+      }
+      self.jsonObject([self.jsonMember("name", JSON.encode(name))] + fields)
+    }
+  }
+
   let normalizePath(path: String!): String! {
     let trimmed = path.trimPrefix("/").trimPrefix("./").trimSuffix("/")
     if (trimmed == "") { "." } else { trimmed }
@@ -388,12 +472,12 @@ type ModuleManifest {
 
   let withLegacyRuntime(
     runtime: String!,
-    moduleSource: String!,
-    engineVersion: String!,
+    moduleSource: String,
+    engineVersion: String,
   ): ModuleManifest! {
     self.legacyRuntime = runtime
-    self.legacyModuleSource = moduleSource
-    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion)
+    self.legacyModuleSource = moduleSource ?? legacyModuleSource
+    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion ?? legacyEngineVersion)
     self.loadedLegacyJSON = true
     self
   }
