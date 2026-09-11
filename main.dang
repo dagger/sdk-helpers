@@ -550,9 +550,6 @@ type ModuleManifest {
     }.map { raw => ManifestDependency(raw) }
     let sdk = self.baseSDK(config)
     self.legacyRuntime = self.sdkSource(sdk)
-    if (self.sdkSource(sdk) != "" and self.stringField(config, "source") == "") {
-      self.legacyModuleSource = "."
-    }
     self
   }
 

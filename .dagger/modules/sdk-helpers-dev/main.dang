@@ -21,6 +21,9 @@ type SdkHelpersDev {
       ),
     )
     self.assertNoModuleSource(loaded.generate(self.workspace).file("dagger-module.toml").contents)
+    let regenerated = loaded.withLegacyGoRuntime.generate(self.workspace, legacyJson: true)
+    self.assertNoModuleSource(regenerated.file("dagger-module.toml").contents)
+    self.assertAbsent(regenerated.file("dagger.json").contents, "\"source\": \".\"")
   }
 
   """Loaded JSON pins are optional output. Other dependency settings remain intact."""
