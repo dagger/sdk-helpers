@@ -21,6 +21,9 @@ type SdkHelpersDev {
       ),
     )
     self.assertNoModuleSource(loaded.generate(self.workspace).file("dagger-module.toml").contents)
+    let regenerated = loaded.withLegacyGoRuntime.generate(self.workspace, legacyJson: true)
+    self.assertNoModuleSource(regenerated.file("dagger-module.toml").contents)
+    self.assertAbsent(regenerated.file("dagger.json").contents, "\"source\": \".\"")
   }
 
   """Loaded JSON pins are optional output. Other dependency settings remain intact."""
@@ -150,7 +153,14 @@ type SdkHelpersDev {
       "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"include\":[\"../go.mod\"],\"source\":\"src\"}")
     let fromJSON = sdkHelpers.loadModuleManifest(json).withName("check").withLegacyGoRuntime.generate(json)
     self.assertContains(fromJSON.file("dagger-module.toml").contents, "source = \"src\"")
+    self.assertContains(fromJSON.file("dagger.json").contents, "\"source\": \"src\"")
     self.assertContains(fromJSON.file("dagger.json").contents, "\"../go.mod\"")
+    let explicitDefault = self.workspace.withNewFile("dagger.json",
+      "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"source\":\".\"}")
+    let fromExplicitDefault = sdkHelpers.loadModuleManifest(explicitDefault).withLegacyGoRuntime
+      .generate(explicitDefault)
+    self.assertContains(fromExplicitDefault.file("dagger.json").contents, "\"source\": \".\"")
+    self.assertNoModuleSource(fromExplicitDefault.file("dagger-module.toml").contents)
     let fresh = sdkHelpers.loadModuleManifest(self.workspace).withName("check").withLegacyGoRuntime
       .generate(self.workspace).file("dagger-module.toml").contents
     self.assertAbsent(fresh, "v0.20.3")
