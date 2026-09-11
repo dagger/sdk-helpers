@@ -20,10 +20,27 @@ current directory. The input workspace stays unchanged.
 TOML output is always enabled. Selection of a future TOML format is not yet
 supported.
 
+## Load manifests from a workspace
+
+Call `sdkHelpers.loadModuleManifest(ws)` to load the manifests in `ws.cwd`.
+It loads `dagger-module.toml` and `dagger.json` when present. Without either
+file, the manifest is empty. Generation keeps the loaded fields that the caller
+does not change, such as `include`, `source`, and `codegen`.
+
+The legacy runtime methods keep a loaded module source and engine version
+unless the caller passes new values. On an empty manifest, they use the
+manifest directory and the running engine version.
+
 ## Add a dependency
 
 Call `manifest.withLegacyRuntimeDependency(module)` with a `ModuleSource`.
-The helper uses `module.moduleOriginalName` as the dependency name.
+The helper uses `module.moduleOriginalName` as the dependency name. A loaded
+dependency with the same source keeps its name and settings instead, so an
+alias survives generation and no duplicate is added.
+
+Call `manifest.withLegacyRuntimeDependencies(modules)` to make the modules the
+complete dependency list. Loaded dependencies that are not in the list are
+removed.
 
 For Git dependencies, it writes `module.asString` as the source without changes.
 This includes any `@version` or `@commit` present in that value. The engine can
@@ -57,6 +74,9 @@ them from that object. The same object can generate output with or without pins.
 - Replace `tomlFile`, `legacyJSONFile`, and `directory` with
   `generate(ws, ...)`. It returns a `Workspace`.
 - Use `lock: true` when the SDK must write pins.
+- Replace a manifest built from scratch with `loadModuleManifest(ws)` and
+  `withLegacyRuntimeDependencies(modules)` to regenerate an existing module
+  without losing its fields.
 
 ## Run checks
 

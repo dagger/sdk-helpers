@@ -137,6 +137,50 @@ type SdkHelpersDev {
     self.assertContains(original.generate(ws, lock: true).file("dagger.json").contents, "old-pin")
   }
 
+  """A manifest loaded from a workspace keeps the fields the caller does not set."""
+  keepsWorkspaceManifestFields: Void @check {
+    let toml = self.workspace.withNewFile("dagger-module.toml",
+      "name = \"old\"\nengineVersion = \"v0.20.3\"\ninclude = [\"../go.mod\"]\nsource = \"src\"\n\n" +
+        "[runtime]\n  source = \"go\"\n\n[codegen]\n  automaticGitignore = false\n")
+    let fromTOML = sdkHelpers.loadModuleManifest(toml).withName("check").withLegacyGoRuntime
+      .generate(toml).file("dagger-module.toml").contents
+    ["name = \"check\"", "engineVersion = \"v0.20.3\"", "include = [\"../go.mod\"]", "source = \"src\"",
+      "automaticGitignore = false"].each { expected => self.assertContains(fromTOML, expected) }
+    let json = self.workspace.withNewFile("dagger.json",
+      "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"include\":[\"../go.mod\"],\"source\":\"src\"}")
+    let fromJSON = sdkHelpers.loadModuleManifest(json).withName("check").withLegacyGoRuntime.generate(json)
+    self.assertContains(fromJSON.file("dagger-module.toml").contents, "source = \"src\"")
+    self.assertContains(fromJSON.file("dagger.json").contents, "\"../go.mod\"")
+    let fresh = sdkHelpers.loadModuleManifest(self.workspace).withName("check").withLegacyGoRuntime
+      .generate(self.workspace).file("dagger-module.toml").contents
+    self.assertAbsent(fresh, "v0.20.3")
+    self.assertAbsent(fresh, "include")
+  }
+
+  """A module reuses the loaded dependency with the same source instead of adding a duplicate."""
+  reusesDependencyWithSameSource: Void @check {
+    let directory = Dagger.directory
+      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("app/dagger-module.toml",
+        "name = \"app\"\nengineVersion = \"v0.21.9\"\n\n[runtime]\n  source = \"go\"\n\n" +
+          "[[dependencies]]\n  name = \"alias\"\n  source = \"../deps/lib\"\n\n" +
+          "[[dependencies]]\n  name = \"stale\"\n  source = \"../stale\"\n")
+    let ws = directory.asWorkspace.withWorkdir("app")
+    let module = directory.asModuleSource(sourceRootPath: "deps/lib")
+    let complete = sdkHelpers.loadModuleManifest(ws).withLegacyRuntimeDependencies(modules: [module])
+      .generate(ws).file("dagger-module.toml").contents
+    self.assertContains(complete, "name = \"alias\"")
+    self.assertContains(complete, "source = \"../deps/lib\"")
+    self.assertAbsent(complete, "name = \"lib\"")
+    self.assertAbsent(complete, "stale")
+    let added = sdkHelpers.loadModuleManifest(ws).withLegacyRuntimeDependency(module)
+      .generate(ws).file("dagger-module.toml").contents
+    self.assertContains(added, "name = \"alias\"")
+    self.assertContains(added, "name = \"stale\"")
+    self.assertAbsent(added, "name = \"lib\"")
+  }
+
   """Absolute local paths are rejected when JSON or TOML is loaded."""
   rejectsAbsoluteDependencyPaths: Void @check {
     ["/tmp/dep", "C:/dep", "C:\\dep", "\\\\server\\dep"].each { source =>
