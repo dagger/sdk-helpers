@@ -345,7 +345,8 @@ type ModuleManifest {
       legacyRuntimeDependencies.filter { dependency => dependency.module == null }
     let prepared = legacyRuntimeDependencies.map { dependency =>
       let module = dependency.module
-      let source = if (module != null and module.kind != ModuleSourceKind.GIT_SOURCE) {
+      let local = if (module == null) { false } else { self.inWorkspace(ws, module) }
+      let source = if (module != null and local) {
         let relative = Path(self.normalizePath(module.sourceRootSubpath))
           .relativeTo(Path(self.normalizePath(ws.cwd)))
         if (relative == null) {
@@ -356,7 +357,9 @@ type ModuleManifest {
         self.dependencySource(dependency.config)
       }
       self.validateDependencySource(source)
-      let pin = if (module != null) {
+      let pin = if (local) {
+        ""
+      } else if (module != null) {
         if (lock) { module.pin } else { "" }
       } else if (lock) {
         self.dependencyPin(dependency.config)
@@ -446,6 +449,23 @@ type ModuleManifest {
         }
       }
       self.jsonObject([self.jsonMember("name", JSON.encode(name))] + fields)
+    }
+  }
+
+  """
+  Whether a module lives in the output workspace, so it is written as a path.
+
+  A Git workspace (such as Dagger Cloud's checkout of a commit) loads its own
+  modules as Git sources. One that the workspace resolves to the same source is
+  still part of it, and a pinned URL there would change on every commit.
+  """
+  let inWorkspace(ws: Workspace!, module: ModuleSource!): Boolean! {
+    if (module.kind != ModuleSourceKind.GIT_SOURCE) {
+      true
+    } else {
+      {
+        ws.moduleSource("/" + self.normalizePath(module.sourceRootSubpath)).asString == module.asString
+      } rescue false
     }
   }
 
