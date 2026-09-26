@@ -46,6 +46,11 @@ For Git dependencies, it writes `module.asString` as the source without changes.
 This includes any `@version` or `@commit` present in that value. The engine can
 add a version when it loads a source that had no version.
 
+A Git workspace, such as a CI checkout loaded by address, loads its own modules
+as Git sources. When the output workspace resolves a Git module's path to the
+same source, the module belongs to the workspace, so the helper writes it as a
+local dependency instead: a relative path with no pin.
+
 For local dependencies, pass a module from the output workspace. The helper
 makes its path relative to `ws.cwd` during generation. Absolute local
 paths in loaded manifests are rejected. Loaded relative paths are used as

@@ -242,6 +242,26 @@ type SdkHelpersDev {
     self.assertContains(locked.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
   }
 
+  """A module from the workspace's own Git checkout is written as a path, not a URL."""
+  placesSameRepositoryGitModules: Void @check {
+    let ws = git("https://github.com/dagger/sdk-helpers").ref(self.gitCommit).asWorkspace.withWorkdir("testdata")
+    let module = ws.moduleSource("/")
+    if (module.kind != ModuleSourceKind.GIT_SOURCE) {
+      raise "expected the Git workspace to load its own module as a Git source"
+    }
+    let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
+    let same = manifest.withLegacyRuntimeDependencies(modules: [module]).generate(ws, lock: true)
+      .file("dagger-module.toml").contents
+    self.assertContains(same, "source = \"..\"")
+    self.assertAbsent(same, "pin =")
+
+    # The same repository at another ref is a different source, so it stays a URL.
+    let other = Dagger.moduleSource("github.com/dagger/sdk-helpers@main")
+    let elsewhere = manifest.withLegacyRuntimeDependencies(modules: [other]).generate(ws)
+      .file("dagger-module.toml").contents
+    self.assertContains(elsewhere, "source = " + JSON.encode(other.asString))
+  }
+
   let gitCommit: String! = "64645f1967d3dba6fce951dd61ae4acd8d9b0861"
 
   let assertNoPins(ws: Workspace!): Void {
