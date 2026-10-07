@@ -31,6 +31,23 @@ The legacy runtime methods keep a loaded module source and engine version
 unless the caller passes new values. On an empty manifest, they use the
 manifest directory and the running engine version.
 
+## Select the legacy runtime
+
+Each built-in runtime has its own method, such as `withLegacyPythonRuntime`.
+Call `manifest.withLegacyRuntime(runtime)` for a runtime that is not built in.
+The runtime value is written as `[runtime] source` without changes. It accepts
+a built-in runtime name, a path relative to the manifest directory, or a module
+reference such as `github.com/dagger/python-sdk/runtime@v1`. An absolute path
+is rejected.
+
+A value without `/` and without `.` must name a built-in runtime: `go`, `dang`,
+`python`, `typescript`, `php`, `elixir`, or `java`, optionally with `@version`
+as the engine accepts it. Write a local path as `./runtime`, not `runtime`. A
+runtime loaded from an existing manifest keeps its value as written.
+
+The helper does not resolve a pin for the runtime. With `lock: true`, it keeps
+the pin a loaded manifest already had for the same runtime source.
+
 ## Add a dependency
 
 Call `manifest.withLegacyRuntimeDependency(module)` with a `ModuleSource`.

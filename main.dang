@@ -169,6 +169,30 @@ type ModuleManifest {
     self.withEntrypoint("module", source)
   }
 
+  """
+  Add a legacy runtime by source.
+
+  The runtime source is a built-in runtime name, a path relative to the
+  manifest directory, or a module reference such as
+  "github.com/dagger/python-sdk/runtime@v1". A value without "/" and without
+  "." must name a built-in runtime, so a local path needs a "./" prefix.
+  """
+  withLegacyRuntime(
+    """Built-in runtime name, module path such as "./runtime", or module reference."""
+    runtime: String!,
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.validateRuntimeSource(runtime)
+    self.legacyRuntime = runtime
+    self.legacyModuleSource = moduleSource ?? legacyModuleSource
+    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion ?? legacyEngineVersion)
+    self.loadedLegacyJSON = true
+    self
+  }
+
   """Add the legacy Go runtime."""
   withLegacyGoRuntime(
     """Module source path. The default keeps the loaded path, or uses the manifest directory."""
@@ -293,9 +317,7 @@ type ModuleManifest {
       raise "module manifest legacy runtime is required when legacy fields are set"
     }
     if (legacyRuntime != "") {
-      if (!self.isBuiltinRuntime(legacyRuntime) and tomlConfig == null and legacyJSONConfig == null) {
-        raise "module manifest legacy runtime " + JSON.encode(legacyRuntime) + " is not supported"
-      }
+      self.validateDependencySource(legacyRuntime)
       if (legacyEngineVersion == "") {
         raise "module manifest legacy engine version is required"
       }
@@ -484,21 +506,21 @@ type ModuleManifest {
     null
   }
 
+  # A value with no "/" and no "." cannot reach a Git host, so the engine looks
+  # for a local directory of that name instead of reporting an unknown runtime.
+  let validateRuntimeSource(runtime: String!): Void {
+    let name = runtime.split("@")[0] ?? runtime
+    if (!name.contains("/") and !name.contains(".") and !self.builtinRuntimes.contains(name)) {
+      raise "module manifest legacy runtime " + JSON.encode(runtime) +
+        " is not a built-in runtime: use one of " + self.builtinRuntimes.join(", ") +
+        ", or " + JSON.encode("./" + runtime) + " for a local path"
+    }
+    null
+  }
+
   let withEntrypoint(kind: String!, source: String!): ModuleManifest! {
     self.entrypointKind = kind
     self.entrypointSource = source
-    self
-  }
-
-  let withLegacyRuntime(
-    runtime: String!,
-    moduleSource: String,
-    engineVersion: String,
-  ): ModuleManifest! {
-    self.legacyRuntime = runtime
-    self.legacyModuleSource = moduleSource ?? legacyModuleSource
-    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion ?? legacyEngineVersion)
-    self.loadedLegacyJSON = true
     self
   }
 
@@ -1114,8 +1136,8 @@ type ModuleManifest {
     }
   }
 
-  let isBuiltinRuntime(runtime: String!): Boolean! {
-    ["go", "dang", "python", "typescript", "php", "elixir", "java"].contains(runtime)
+  let builtinRuntimes: [String!]! {
+    ["go", "dang", "python", "typescript", "php", "elixir", "java"]
   }
 
   let currentEngineVersion: String! {

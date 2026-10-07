@@ -167,6 +167,99 @@ type SdkHelpersDev {
     self.assertAbsent(fresh, "include")
   }
 
+  """A custom legacy runtime source is written as given, and no pin is resolved for it."""
+  writesCustomLegacyRuntime: Void @check {
+    ["./runtime", "../runtime", "github.com/dagger/python-sdk/runtime@v1",
+      "https://github.com/dagger/python-sdk#v1:runtime", "go", "dang", "python", "typescript",
+      "php", "elixir", "java", "php@v0.18.0"].each { runtime =>
+      let output = sdkHelpers.moduleManifest().withName("check")
+        .withLegacyRuntime(runtime, engineVersion: "v0.20.3").generate(self.workspace, lock: true)
+      self.assertContains(output.file("dagger-module.toml").contents,
+        "[runtime]\n  source = " + JSON.encode(runtime))
+      self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
+      self.assertNoPins(output)
+    }
+    let named = sdkHelpers.moduleManifest().withName("check")
+      .withLegacyPythonRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(self.workspace)
+    let generic = sdkHelpers.moduleManifest().withName("check")
+      .withLegacyRuntime("python", moduleSource: "src", engineVersion: "v0.20.3").generate(self.workspace)
+    ["dagger-module.toml", "dagger.json"].each { file =>
+      if (named.file(file).contents != generic.file(file).contents) {
+        raise "withLegacyRuntime must match withLegacyPythonRuntime in " + file + ":\n" +
+          generic.file(file).contents
+      }
+    }
+    let absolute = sdkHelpers.moduleManifest().withName("check").withLegacyRuntime("/opt/runtime")
+      .generate(self.workspace).file("dagger-module.toml").contents rescue {
+        error: Error => error.message
+      }
+    self.assertContains(absolute, "must be relative")
+  }
+
+  """A single-word runtime that is not built in is rejected with the local path to use."""
+  rejectsBareCustomLegacyRuntime: Void @check {
+    ["runtime", "pyhton", "runtime@v1"].each { runtime =>
+      let message = sdkHelpers.moduleManifest().withName("check")
+        .withLegacyRuntime(runtime, engineVersion: "v0.20.3")
+        .generate(self.workspace).file("dagger-module.toml").contents rescue {
+          error: Error => error.message
+        }
+      self.assertContains(message, "is not a built-in runtime")
+      self.assertContains(message, JSON.encode("./" + runtime))
+    }
+    null
+  }
+
+  """A custom legacy runtime composes with the entrypoint, include, dependency, and reset setters."""
+  composesCustomLegacyRuntime: Void @check {
+    let runtime = "github.com/dagger/python-sdk/runtime@v1"
+    let module = Dagger.moduleSource("github.com/dagger/sdk-helpers@main", refPin: self.gitCommit)
+    let manifest = sdkHelpers.moduleManifest().withName("check")
+      .withLegacyRuntime(runtime, engineVersion: "v0.20.3")
+      .withLegacyInclude("src/**")
+      .withDangEntrypoint("main.dang")
+      .withLegacyRuntimeDependency(module)
+    let output = manifest.generate(self.workspace, lock: true)
+    let toml = output.file("dagger-module.toml").contents
+    self.assertContains(toml, "[runtime]\n  source = " + JSON.encode(runtime))
+    self.assertContains(toml, "include = [\"src/**\"]")
+    self.assertContains(toml, "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\"")
+    self.assertContains(toml, "pin = " + JSON.encode(self.gitCommit))
+    self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
+    let reset = manifest.withoutLegacyFields.generate(self.workspace)
+    self.assertAbsent(reset.file("dagger-module.toml").contents, "[runtime]")
+    self.assertAbsent(reset.file("dagger-module.toml").contents, "python-sdk")
+    if (reset.directory(".").exists("dagger.json")) {
+      raise "a manifest without legacy fields must not generate dagger.json"
+    }
+    null
+  }
+
+  """A loaded custom runtime source and its pin survive regeneration until the caller replaces them."""
+  keepsLoadedCustomLegacyRuntime: Void @check {
+    let runtime = "github.com/dagger/python-sdk/runtime@v1"
+    let ws = self.workspace.withNewFile("dagger-module.toml",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = " + JSON.encode(runtime) +
+        "\n  pin = \"runtime-pin\"\n")
+    let loaded = sdkHelpers.loadModuleManifest(ws)
+    let locked = loaded.generate(ws, lock: true)
+    self.assertContains(locked.file("dagger-module.toml").contents,
+      "[runtime]\n  source = " + JSON.encode(runtime) + "\n  pin = \"runtime-pin\"")
+    self.assertContains(locked.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
+    let replaced = loaded.withLegacyRuntime("./runtime").generate(ws, lock: true)
+    self.assertContains(replaced.file("dagger-module.toml").contents,
+      "[runtime]\n  source = \"./runtime\"")
+    self.assertContains(replaced.file("dagger-module.toml").contents, "engineVersion = \"v0.20.3\"")
+    self.assertAbsent(replaced.file("dagger-module.toml").contents, "python-sdk")
+    self.assertAbsent(replaced.file("dagger-module.toml").contents, "runtime-pin")
+    let bare = self.workspace.withNewFile("dagger-module.toml",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"runtime\"\n")
+    let regenerated = sdkHelpers.loadModuleManifest(bare).generate(bare)
+    self.assertContains(regenerated.file("dagger-module.toml").contents,
+      "[runtime]\n  source = \"runtime\"")
+    self.assertContains(regenerated.file("dagger.json").contents, "\"source\": \"runtime\"")
+  }
+
   """A module reuses the loaded dependency with the same source instead of adding a duplicate."""
   reusesDependencyWithSameSource: Void @check {
     let directory = Dagger.directory
