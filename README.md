@@ -40,6 +40,11 @@ a built-in runtime name, a path relative to the manifest directory, or a module
 reference such as `github.com/dagger/python-sdk/runtime@v1`. An absolute path
 is rejected.
 
+A value without `/` and without `.` must name a built-in runtime: `go`, `dang`,
+`python`, `typescript`, `php`, `elixir`, or `java`, optionally with `@version`
+as the engine accepts it. Write a local path as `./runtime`, not `runtime`. A
+runtime loaded from an existing manifest keeps its value as written.
+
 The helper does not resolve a pin for the runtime. With `lock: true`, it keeps
 the pin a loaded manifest already had for the same runtime source.
 
