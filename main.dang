@@ -169,6 +169,28 @@ type ModuleManifest {
     self.withEntrypoint("module", source)
   }
 
+  """
+  Add a legacy runtime by source.
+
+  The runtime source is a built-in runtime name, a path relative to the
+  manifest directory, or a module reference such as
+  "github.com/dagger/python-sdk/runtime@v1".
+  """
+  withLegacyRuntime(
+    """Built-in runtime name, module path relative to the manifest directory, or module reference."""
+    runtime: String!,
+    """Module source path. The default keeps the loaded path, or uses the manifest directory."""
+    moduleSource: String = null,
+    """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
+    engineVersion: String = null,
+  ): ModuleManifest! {
+    self.legacyRuntime = runtime
+    self.legacyModuleSource = moduleSource ?? legacyModuleSource
+    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion ?? legacyEngineVersion)
+    self.loadedLegacyJSON = true
+    self
+  }
+
   """Add the legacy Go runtime."""
   withLegacyGoRuntime(
     """Module source path. The default keeps the loaded path, or uses the manifest directory."""
@@ -293,9 +315,7 @@ type ModuleManifest {
       raise "module manifest legacy runtime is required when legacy fields are set"
     }
     if (legacyRuntime != "") {
-      if (!self.isBuiltinRuntime(legacyRuntime) and tomlConfig == null and legacyJSONConfig == null) {
-        raise "module manifest legacy runtime " + JSON.encode(legacyRuntime) + " is not supported"
-      }
+      self.validateDependencySource(legacyRuntime)
       if (legacyEngineVersion == "") {
         raise "module manifest legacy engine version is required"
       }
@@ -487,18 +507,6 @@ type ModuleManifest {
   let withEntrypoint(kind: String!, source: String!): ModuleManifest! {
     self.entrypointKind = kind
     self.entrypointSource = source
-    self
-  }
-
-  let withLegacyRuntime(
-    runtime: String!,
-    moduleSource: String,
-    engineVersion: String,
-  ): ModuleManifest! {
-    self.legacyRuntime = runtime
-    self.legacyModuleSource = moduleSource ?? legacyModuleSource
-    self.legacyEngineVersion = self.normalizeEngineVersion(engineVersion ?? legacyEngineVersion)
-    self.loadedLegacyJSON = true
     self
   }
 
@@ -1112,10 +1120,6 @@ type ModuleManifest {
       let after = sorted.reject { configured => configured < value }
       before + [value] + after
     }
-  }
-
-  let isBuiltinRuntime(runtime: String!): Boolean! {
-    ["go", "dang", "python", "typescript", "php", "elixir", "java"].contains(runtime)
   }
 
   let currentEngineVersion: String! {
