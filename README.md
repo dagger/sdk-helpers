@@ -1,8 +1,11 @@
 # SDK helpers
 
 Use `ModuleManifest` to load, change, and generate Dagger module manifests.
-The manifest selects engine API version `v1.0.0`. Checks pass on engine
-`v1.0.0-beta.11`. Earlier beta releases have not been tested.
+The manifest selects engine API version `v1.0.0-beta.20`. Engines from
+`v1.0.0-beta.21` on apply new naming rules to modules that declare
+`v1.0.0-beta.21` or later, including `v1.0.0`. The pin keeps this module's API
+names, such as `SdkHelpers` and `loadJson`, stable for its callers. Checks
+pass on engine `v1.0.0-beta.11`. Earlier beta releases have not been tested.
 Callers can still select `v0.21.9` on that engine. The helper needs the newer
 API for its own Workspace operations.
 
