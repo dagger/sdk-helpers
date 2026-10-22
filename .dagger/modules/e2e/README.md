@@ -3,7 +3,7 @@
 The root `dagger.toml` registers this module. Run all checks with `dagger check`.
 
 `legacyCallerCheck` calls the public helper from a module that declares
-`v0.21.9`. The helper keeps its own `v1.0.0` API selection.
+`v0.21.9`. The helper keeps its own `v1.0.0-beta.20` API selection.
 
 `goSdkCheck` runs the Go SDK in an isolated container. It uses SDK commit
 `fef4ddfc4d6ec0ffa2c0aa3361f5466d800d4069` and the helper source from this
