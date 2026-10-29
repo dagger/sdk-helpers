@@ -109,8 +109,8 @@ type DangConfig {
   loaded import with the same name, such as service, are kept. A version
   requires Dang v2.2.0 or later.
 
-  Dang does not allow a version with endpoint, so a version for a loaded import
-  with endpoint is an error.
+  Dang does not allow a version with a non-empty endpoint, so a version for a
+  loaded import with one is an error.
   """
   withDaggerImport(
     """Import name, such as "Dagger"."""
@@ -118,11 +118,13 @@ type DangConfig {
     """Dagger API version that the source is written against, such as "v1.0.0". Omit it to set dagger = true."""
     version: String = null,
   ): DangConfig! {
-    if (version != null and self.importField(name, "endpoint") != null) {
+    let endpoint = self.importField(name, "endpoint") ?? "\"\""
+    if (version != null and endpoint != "\"\"") {
       raise "dang.toml import " + JSON.encode(name) +
         " has an endpoint, which Dang does not allow with a Dagger version; omit the version to set dagger = true"
     }
     let dagger = if (version == null) { Dagger.json.newBoolean(true) } else { Dagger.json.newString(version) }
+    # JSONValue cannot remove a field; TOML.encode drops null fields.
     self.withField(["imports", name, "path"], Dagger.json.withContents("null" :: Dagger.JSON!))
       .withField(["imports", name, "dagger"], dagger)
   }

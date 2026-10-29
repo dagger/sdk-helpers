@@ -433,6 +433,7 @@ type SdkHelpersDev {
       "dang = \"2.0\"\n\n[imports.Dagger]\ndagger = true\nservice = [\"./bin/dagger\", \"session\"]\n\n" +
         "[imports.Lib]\npath = \"./lib\"\n\n[imports.Old]\npath = \"./old\"\n\n" +
         "[imports.Remote]\ndagger = true\nendpoint = \"http://localhost:8080\"\n\n" +
+        "[imports.Blank]\nendpoint = \"\"\n\n" +
         "[imports.Api]\nschema = \"api.graphqls\"\n[imports.Api.headers]\nX-Token = \"${TOKEN}\"\n")
     let loaded = sdkHelpers.loadDangConfig(ws)
     if (loaded.version != "2.0") {
@@ -445,6 +446,7 @@ type SdkHelpersDev {
       .withDaggerImport("Engine", "v1.0.0")
       .withDaggerImport("Old", "v1.0.0")
       .withDaggerImport("Remote")
+      .withDaggerImport("Blank", "v1.0.0")
       .generate(ws)
     self.assertTOMLString(output, ["dang"], "2.0")
     self.assertTOMLString(output, ["imports", "Dagger", "dagger"], "v1.0.0")
@@ -456,11 +458,13 @@ type SdkHelpersDev {
     }
     self.assertTOMLRaw(output, ["imports", "Remote", "dagger"], "true")
     self.assertTOMLString(output, ["imports", "Remote", "endpoint"], "http://localhost:8080")
+    self.assertTOMLString(output, ["imports", "Blank", "dagger"], "v1.0.0")
     let versionedEndpoint = loaded.withDaggerImport("Remote", "v1.0.0")
       .generate(ws).file("dang.toml").contents rescue {
-        error: Error => error.message
+        error: Error => "raised: " + error.message
       }
-    self.assertContains(versionedEndpoint, "endpoint")
+    self.assertContains(versionedEndpoint, "raised: ")
+    self.assertContains(versionedEndpoint, "has an endpoint")
     self.assertTOMLString(output, ["imports", "Api", "schema"], "api.graphqls")
     self.assertTOMLString(output, ["imports", "Api", "headers", "X-Token"], "${TOKEN}")
     let service = self.tomlValue(output.file("dang.toml").contents).field(["imports", "Dagger", "service"])

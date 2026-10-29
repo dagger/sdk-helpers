@@ -104,10 +104,10 @@ Call `config.withDaggerImport(name, version)` to set `imports.<name>.dagger`
 to a Dagger version. Omit `version` to set `dagger = true`. Each call adds or
 replaces one named import. Other settings of a loaded import, such as
 `service`, are kept. Dang does not allow `path` with `dagger`, so the call
-removes `path`. Dang does not allow a Dagger version with `endpoint`, so the
-call fails with a version for an import that has `endpoint`. A Dagger version
-requires Dang v2.2.0 or later. Earlier Dang versions accept only `dagger =
-true`.
+removes `path`. Dang does not allow a Dagger version with a non-empty
+`endpoint`, so the call fails with a version for an import that has one. A
+Dagger version requires Dang v2.2.0 or later. Earlier Dang versions accept only
+`dagger = true`.
 
 Call `config.generate(ws)` to write `dang.toml` at `ws.cwd`. It returns a
 modified `Workspace` and preserves other files. If the configuration has no
