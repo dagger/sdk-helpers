@@ -68,6 +68,31 @@ type DangConfig {
     }
   }
 
+  """
+  The Dang language version that generate writes.
+
+  This is the loaded or configured dang value, or "2.1" when none is set.
+  """
+  version: String! {
+    if (self.json.fields.contains("dang")) { self.json.field(["dang"]).asString } else { "2.1" }
+  }
+
+  """
+  Imports that connect to the Dagger engine.
+
+  An import is listed when its dagger value is a version or true. The order is
+  not specified.
+  """
+  daggerImports: [DangDaggerImport!]! {
+    self.importNames.filter { name =>
+      let dagger = self.importField(name, "dagger") ?? ""
+      dagger == "true" or dagger.hasPrefix("\"")
+    }.map { name =>
+      let dagger = self.json.field(["imports", name, "dagger"])
+      DangDaggerImport(name, if (toString(dagger.contents) == "true") { null } else { dagger.asString })
+    }
+  }
+
   """Set the Dang language version that the project source is written in."""
   withVersion(
     """Dang version, such as "2.1"."""
@@ -79,16 +104,27 @@ type DangConfig {
   """
   Add or replace an import that connects to the Dagger engine.
 
-  This sets imports.<name>.dagger. Other settings of a loaded import with the
-  same name, such as service, are kept.
+  This sets imports.<name>.dagger to the version, or to true without one. It
+  removes path, which Dang does not allow with dagger. Other settings of a
+  loaded import with the same name, such as service, are kept. A version
+  requires Dang v2.2.0 or later.
+
+  Dang does not allow a version with endpoint, so a version for a loaded import
+  with endpoint is an error.
   """
   withDaggerImport(
     """Import name, such as "Dagger"."""
     name: String!,
-    """Dagger API version that the source is written against, such as "v1.0.0"."""
-    version: String!,
+    """Dagger API version that the source is written against, such as "v1.0.0". Omit it to set dagger = true."""
+    version: String = null,
   ): DangConfig! {
-    self.withField(["imports", name, "dagger"], Dagger.json.newString(version))
+    if (version != null and self.importField(name, "endpoint") != null) {
+      raise "dang.toml import " + JSON.encode(name) +
+        " has an endpoint, which Dang does not allow with a Dagger version; omit the version to set dagger = true"
+    }
+    let dagger = if (version == null) { Dagger.json.newBoolean(true) } else { Dagger.json.newString(version) }
+    self.withField(["imports", name, "path"], Dagger.json.withContents("null" :: Dagger.JSON!))
+      .withField(["imports", name, "dagger"], dagger)
   }
 
   """
@@ -100,9 +136,7 @@ type DangConfig {
     """Workspace whose current directory will contain dang.toml."""
     ws: Workspace!,
   ): Workspace! {
-    # Dang reads a dang.toml without a version as 2.1, so the default keeps
-    # the meaning of a loaded file.
-    let versioned = if (self.json.fields.contains("dang")) { self } else { self.withVersion("2.1") }
+    let versioned = self.withVersion(self.version)
     ws.withNewFile("dang.toml", TOML.encode(JSON.decode(versioned.config)) + "\n", permissions: 420)
   }
 
@@ -121,6 +155,29 @@ type DangConfig {
   let json: Dagger.JSONValue! {
     Dagger.json.withContents(config :: Dagger.JSON!)
   }
+
+  let importNames: [String!]! {
+    if (self.json.fields.contains("imports")) { self.json.field(["imports"]).fields } else { [] }
+  }
+
+  let importField(name: String!, field: String!): String {
+    if (!self.importNames.contains(name)) {
+      null
+    } else {
+      let source = self.json.field(["imports", name])
+      let raw = if (source.fields.contains(field)) { toString(source.field([field]).contents) } else { "null" }
+      if (raw == "null") { null } else { raw }
+    }
+  }
+}
+
+"""An import in dang.toml that connects to the Dagger engine."""
+type DangDaggerImport {
+  """Import name, such as "Dagger"."""
+  name: String!
+
+  """Dagger API version that the source is written against, or null for dagger = true."""
+  version: String
 }
 
 type ManifestDependency {

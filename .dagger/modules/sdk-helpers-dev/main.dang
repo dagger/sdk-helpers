@@ -399,20 +399,27 @@ type SdkHelpersDev {
     let unversioned = sdkHelpers.dangConfig(loadToml: Dagger.file("dang.toml", "[imports.Lib]\npath = \"./lib\"\n"))
     self.assertTOMLString(unversioned.generate(self.workspace), ["dang"], "2.1")
     self.assertTOMLString(unversioned.withVersion("2.0").generate(self.workspace), ["dang"], "2.0")
+    if (unversioned.version != "2.1" or unversioned.withVersion("2.0").version != "2.0") {
+      raise "version must report the dang value that generate writes"
+    }
   }
 
-  """Each named Dagger import is written once, with the version set last."""
+  """Each named Dagger import is written once, with the value set last. Without a version, dagger is true."""
   writesNamedDaggerImports: Void @check {
-    let output = sdkHelpers.dangConfig()
+    let config = sdkHelpers.dangConfig()
       .withDaggerImport("Dagger", "v0.19.0")
       .withDaggerImport("my.engine", "v1.0.0-beta.21")
       .withDaggerImport("Dagger", "v1.0.0")
-      .generate(self.workspace)
+      .withDaggerImport("Local")
+    self.assertDaggerImports(config.daggerImports.{{name, version}}.map { i => i.name + "=" + (i.version ?? "true") },
+      ["Dagger=v1.0.0", "my.engine=v1.0.0-beta.21", "Local=true"])
+    let output = config.generate(self.workspace)
     self.assertTOMLString(output, ["imports", "Dagger", "dagger"], "v1.0.0")
     self.assertTOMLString(output, ["imports", "my.engine", "dagger"], "v1.0.0-beta.21")
+    self.assertTOMLRaw(output, ["imports", "Local", "dagger"], "true")
     let imports = self.tomlValue(output.file("dang.toml").contents).field(["imports"]).fields
-    if (imports.length != 2) {
-      raise "expected two imports, got " + imports.join(", ")
+    if (imports.length != 3) {
+      raise "expected three imports, got " + imports.join(", ")
     }
     let regenerated = sdkHelpers.loadDangConfig(output).generate(output)
     if (regenerated.file("dang.toml").contents != output.file("dang.toml").contents) {
@@ -424,16 +431,36 @@ type SdkHelpersDev {
   keepsLoadedDangConfig: Void @check {
     let ws = self.workspace.withNewFile("dang.toml",
       "dang = \"2.0\"\n\n[imports.Dagger]\ndagger = true\nservice = [\"./bin/dagger\", \"session\"]\n\n" +
-        "[imports.Lib]\npath = \"./lib\"\n\n[imports.Api]\nschema = \"api.graphqls\"\n" +
-        "[imports.Api.headers]\nX-Token = \"${TOKEN}\"\n")
-    let output = sdkHelpers.loadDangConfig(ws)
+        "[imports.Lib]\npath = \"./lib\"\n\n[imports.Old]\npath = \"./old\"\n\n" +
+        "[imports.Remote]\ndagger = true\nendpoint = \"http://localhost:8080\"\n\n" +
+        "[imports.Api]\nschema = \"api.graphqls\"\n[imports.Api.headers]\nX-Token = \"${TOKEN}\"\n")
+    let loaded = sdkHelpers.loadDangConfig(ws)
+    if (loaded.version != "2.0") {
+      raise "version must report the loaded dang value, got " + loaded.version
+    }
+    self.assertDaggerImports(loaded.daggerImports.{{name, version}}.map { i => i.name + "=" + (i.version ?? "true") },
+      ["Dagger=true", "Remote=true"])
+    let output = loaded
       .withDaggerImport("Dagger", "v1.0.0")
       .withDaggerImport("Engine", "v1.0.0")
+      .withDaggerImport("Old", "v1.0.0")
+      .withDaggerImport("Remote")
       .generate(ws)
     self.assertTOMLString(output, ["dang"], "2.0")
     self.assertTOMLString(output, ["imports", "Dagger", "dagger"], "v1.0.0")
     self.assertTOMLString(output, ["imports", "Engine", "dagger"], "v1.0.0")
     self.assertTOMLString(output, ["imports", "Lib", "path"], "./lib")
+    self.assertTOMLString(output, ["imports", "Old", "dagger"], "v1.0.0")
+    if (self.tomlValue(output.file("dang.toml").contents).field(["imports", "Old"]).fields.contains("path")) {
+      raise "a Dagger import must not keep path:\n" + output.file("dang.toml").contents
+    }
+    self.assertTOMLRaw(output, ["imports", "Remote", "dagger"], "true")
+    self.assertTOMLString(output, ["imports", "Remote", "endpoint"], "http://localhost:8080")
+    let versionedEndpoint = loaded.withDaggerImport("Remote", "v1.0.0")
+      .generate(ws).file("dang.toml").contents rescue {
+        error: Error => error.message
+      }
+    self.assertContains(versionedEndpoint, "endpoint")
     self.assertTOMLString(output, ["imports", "Api", "schema"], "api.graphqls")
     self.assertTOMLString(output, ["imports", "Api", "headers", "X-Token"], "${TOKEN}")
     let service = self.tomlValue(output.file("dang.toml").contents).field(["imports", "Dagger", "service"])
@@ -459,6 +486,21 @@ type SdkHelpersDev {
     let contents = ws.file("dang.toml").contents
     if (self.tomlValue(contents).field(path).asString != expected) {
       raise "expected " + path.join(".") + " = " + JSON.encode(expected) + " in:\n" + contents
+    }
+    null
+  }
+
+  let assertTOMLRaw(ws: Workspace!, path: [String!]!, expected: String!): Void {
+    let contents = ws.file("dang.toml").contents
+    if (toString(self.tomlValue(contents).field(path).contents) != expected) {
+      raise "expected " + path.join(".") + " = " + expected + " in:\n" + contents
+    }
+    null
+  }
+
+  let assertDaggerImports(actual: [String!]!, expected: [String!]!): Void {
+    if (actual.length != expected.length or !expected.reject { i => actual.contains(i) }.isEmpty) {
+      raise "expected Dagger imports " + expected.join(", ") + ", got " + actual.join(", ")
     }
     null
   }
