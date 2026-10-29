@@ -26,6 +26,101 @@ type SdkHelpers {
       loadJSON: if (dir.exists("dagger.json")) { dir.file("dagger.json") } else { null },
     )
   }
+
+  """Construct or load a Dang project configuration."""
+  dangConfig(
+    """Optional dang.toml file to load."""
+    loadTOML: File = null,
+  ): DangConfig! {
+    DangConfig(loadTOML: loadTOML)
+  }
+
+  """
+  Load the Dang project configuration in Workspace.cwd.
+
+  The configuration is empty when dang.toml does not exist.
+  """
+  loadDangConfig(
+    """Workspace whose current directory holds dang.toml."""
+    ws: Workspace!,
+  ): DangConfig! {
+    let dir = ws.directory(".", include: ["dang.toml"])
+    DangConfig(loadTOML: if (dir.exists("dang.toml")) { dir.file("dang.toml") } else { null })
+  }
+}
+
+"""
+A Dang project configuration, written as dang.toml.
+
+Loaded settings that the caller does not change are written back.
+"""
+type DangConfig {
+  let config: String! = "{}"
+
+  new(
+    """Optional dang.toml file to load."""
+    loadTOML: File = null,
+  ) {
+    if (loadTOML == null) {
+      self
+    } else {
+      self.load(loadTOML.contents)
+    }
+  }
+
+  """Set the Dang language version that the project source is written in."""
+  withVersion(
+    """Dang version, such as "2.1"."""
+    version: String!,
+  ): DangConfig! {
+    self.withField(["dang"], Dagger.json.newString(version))
+  }
+
+  """
+  Add or replace an import that connects to the Dagger engine.
+
+  This sets imports.<name>.dagger. Other settings of a loaded import with the
+  same name, such as service, are kept.
+  """
+  withDaggerImport(
+    """Import name, such as "Dagger"."""
+    name: String!,
+    """Dagger API version that the source is written against, such as "v1.0.0"."""
+    version: String!,
+  ): DangConfig! {
+    self.withField(["imports", name, "dagger"], Dagger.json.newString(version))
+  }
+
+  """
+  Write dang.toml at ws.cwd and return the modified workspace.
+
+  Without a configured version, dang is set to "2.1".
+  """
+  generate(
+    """Workspace whose current directory will contain dang.toml."""
+    ws: Workspace!,
+  ): Workspace! {
+    # Dang reads a dang.toml without a version as 2.1, so the default keeps
+    # the meaning of a loaded file.
+    let versioned = if (self.json.fields.contains("dang")) { self } else { self.withVersion("2.1") }
+    ws.withNewFile("dang.toml", TOML.encode(JSON.decode(versioned.config)) + "\n", permissions: 420)
+  }
+
+  let load(contents: String!): DangConfig! {
+    self.config = JSON.encode(TOML.decode(contents)) rescue {
+      error: Error => raise "load dang.toml: " + error.message
+    }
+    self
+  }
+
+  let withField(path: [String!]!, value: Dagger.JSONValue!): DangConfig! {
+    self.config = toString(self.json.withField(path, value).contents)
+    self
+  }
+
+  let json: Dagger.JSONValue! {
+    Dagger.json.withContents(config :: Dagger.JSON!)
+  }
 }
 
 type ManifestDependency {

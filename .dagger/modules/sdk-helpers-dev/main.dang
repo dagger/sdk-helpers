@@ -387,8 +387,81 @@ type SdkHelpersDev {
     self.assertContains(elsewhere, "source = " + JSON.encode(other.asString))
   }
 
+  """A dang.toml without a version declares Dang 2.1, unless the caller sets one."""
+  writesDefaultDangVersion: Void @check {
+    let empty = sdkHelpers.loadDangConfig(self.workspace).generate(self.workspace)
+    if (empty.file("dang.toml").contents != "dang = \"2.1\"\n") {
+      raise "unexpected default dang.toml:\n" + empty.file("dang.toml").contents
+    }
+    if (empty.file("keep.txt").contents != "keep" or self.workspace.directory(".").exists("dang.toml")) {
+      raise "generation must preserve other files and the input workspace"
+    }
+    let unversioned = sdkHelpers.dangConfig(loadToml: Dagger.file("dang.toml", "[imports.Lib]\npath = \"./lib\"\n"))
+    self.assertTOMLString(unversioned.generate(self.workspace), ["dang"], "2.1")
+    self.assertTOMLString(unversioned.withVersion("2.0").generate(self.workspace), ["dang"], "2.0")
+  }
+
+  """Each named Dagger import is written once, with the version set last."""
+  writesNamedDaggerImports: Void @check {
+    let output = sdkHelpers.dangConfig()
+      .withDaggerImport("Dagger", "v0.19.0")
+      .withDaggerImport("my.engine", "v1.0.0-beta.21")
+      .withDaggerImport("Dagger", "v1.0.0")
+      .generate(self.workspace)
+    self.assertTOMLString(output, ["imports", "Dagger", "dagger"], "v1.0.0")
+    self.assertTOMLString(output, ["imports", "my.engine", "dagger"], "v1.0.0-beta.21")
+    let imports = self.tomlValue(output.file("dang.toml").contents).field(["imports"]).fields
+    if (imports.length != 2) {
+      raise "expected two imports, got " + imports.join(", ")
+    }
+    let regenerated = sdkHelpers.loadDangConfig(output).generate(output)
+    if (regenerated.file("dang.toml").contents != output.file("dang.toml").contents) {
+      raise "a loaded dang.toml must be written back unchanged:\n" + regenerated.file("dang.toml").contents
+    }
+  }
+
+  """A loaded dang.toml keeps its version and the import settings the caller does not set."""
+  keepsLoadedDangConfig: Void @check {
+    let ws = self.workspace.withNewFile("dang.toml",
+      "dang = \"2.0\"\n\n[imports.Dagger]\ndagger = true\nservice = [\"./bin/dagger\", \"session\"]\n\n" +
+        "[imports.Lib]\npath = \"./lib\"\n\n[imports.Api]\nschema = \"api.graphqls\"\n" +
+        "[imports.Api.headers]\nX-Token = \"${TOKEN}\"\n")
+    let output = sdkHelpers.loadDangConfig(ws)
+      .withDaggerImport("Dagger", "v1.0.0")
+      .withDaggerImport("Engine", "v1.0.0")
+      .generate(ws)
+    self.assertTOMLString(output, ["dang"], "2.0")
+    self.assertTOMLString(output, ["imports", "Dagger", "dagger"], "v1.0.0")
+    self.assertTOMLString(output, ["imports", "Engine", "dagger"], "v1.0.0")
+    self.assertTOMLString(output, ["imports", "Lib", "path"], "./lib")
+    self.assertTOMLString(output, ["imports", "Api", "schema"], "api.graphqls")
+    self.assertTOMLString(output, ["imports", "Api", "headers", "X-Token"], "${TOKEN}")
+    let service = self.tomlValue(output.file("dang.toml").contents).field(["imports", "Dagger", "service"])
+      .asArray.{{asString}}.map { value => value.asString }
+    if (service != ["./bin/dagger", "session"]) {
+      raise "the loaded service must be kept:\n" + output.file("dang.toml").contents
+    }
+    let invalid = sdkHelpers.dangConfig(loadToml: Dagger.file("dang.toml", "dang = "))
+      .generate(self.workspace).file("dang.toml").contents rescue {
+        error: Error => error.message
+      }
+    self.assertContains(invalid, "load dang.toml")
+  }
+
   let gitCommit: String! = "64645f1967d3dba6fce951dd61ae4acd8d9b0861"
   let otherGitCommit: String! = "41fd4d3062d75a836429c6db5c42b4c6c9178ca4"
+
+  let tomlValue(contents: String!): Dagger.JSONValue! {
+    Dagger.json.withContents(JSON.encode(TOML.decode(contents)) :: Dagger.JSON!)
+  }
+
+  let assertTOMLString(ws: Workspace!, path: [String!]!, expected: String!): Void {
+    let contents = ws.file("dang.toml").contents
+    if (self.tomlValue(contents).field(path).asString != expected) {
+      raise "expected " + path.join(".") + " = " + JSON.encode(expected) + " in:\n" + contents
+    }
+    null
+  }
 
   let assertNoPins(ws: Workspace!): Void {
     self.assertAbsent(ws.file("dagger.json").contents, "\"pin\":")

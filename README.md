@@ -88,6 +88,25 @@ Generation does not resolve sources or look up missing pins.
 Loaded pins remain internal to `ModuleManifest`. Generation does not remove
 them from that object. The same object can generate output with or without pins.
 
+## Write dang.toml
+
+Use `DangConfig` to load, change, and write a Dang project configuration.
+Call `sdkHelpers.loadDangConfig(ws)` to load `dang.toml` in `ws.cwd`. Without
+the file, the configuration is empty. Call `sdkHelpers.dangConfig(loadTOML:
+file)` to load a `File` instead.
+
+Call `config.withDaggerImport(name, version)` to set
+`imports.<name>.dagger`. Each call adds or replaces one named import. Other
+settings of a loaded import, such as `service`, are kept.
+
+Call `config.generate(ws)` to write `dang.toml` at `ws.cwd`. It returns a
+modified `Workspace` and preserves other files. If the configuration has no
+`dang` version, it writes `dang = "2.1"`. Call `config.withVersion(version)` to
+write another version. A loaded version is kept.
+
+The output keeps the loaded settings, but not their comments or layout. Keys
+are written in alphabetical order.
+
 ## Update existing SDK callers
 
 - Replace `withLegacyRuntimeDependency(source, name, pin)` with
