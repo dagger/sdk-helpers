@@ -124,7 +124,7 @@ type DangConfig {
         " has an endpoint, which Dang does not allow with a Dagger version; omit the version to set dagger = true"
     }
     let dagger = if (version == null) { Dagger.json.newBoolean(true) } else { Dagger.json.newString(version) }
-    # JSONValue cannot remove a field; TOML.encode drops null fields.
+    # JSONValue cannot remove a field, but TOML.encode drops nulls.
     self.withField(["imports", name, "path"], Dagger.json.withContents("null" :: Dagger.JSON!))
       .withField(["imports", name, "dagger"], dagger)
   }
