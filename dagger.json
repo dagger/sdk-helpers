@@ -1,7 +1,0 @@
-{
-  "name": "sdk-helpers",
-  "engineVersion": "v1.0.0",
-  "sdk": {
-    "source": "dang"
-  }
-}

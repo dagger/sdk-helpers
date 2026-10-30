@@ -88,6 +88,36 @@ Generation does not resolve sources or look up missing pins.
 Loaded pins remain internal to `ModuleManifest`. Generation does not remove
 them from that object. The same object can generate output with or without pins.
 
+## Read and write dang.toml
+
+Use `DangConfig` to load, read, change, and write a Dang project configuration.
+Call `sdkHelpers.loadDangConfig(ws)` to load `dang.toml` in `ws.cwd`. Without
+the file, the configuration is empty. Call `sdkHelpers.dangConfig(loadToml:
+file)` to load a `File` instead.
+
+Read `config.version` to get the Dang version that `generate` writes. Read
+`config.daggerImports` to get the imports whose `dagger` value is a version or
+`true`. Each entry has a `name` and a `version`. The `version` is null for
+`dagger = true`. The list order is not specified.
+
+Call `config.withDaggerImport(name, version)` to set `imports.<name>.dagger`
+to a Dagger version. Omit `version` to set `dagger = true`. Each call adds or
+replaces one named import. Other settings of a loaded import, such as
+`service`, are kept. Dang does not allow `path` with `dagger`, so the call
+removes `path`. Dang does not allow a Dagger version with a non-empty
+`endpoint`, so the call fails with a version for an import that has one. A
+Dagger version requires Dang v2.2.0 or later. Earlier Dang versions accept only
+`dagger = true`.
+
+Call `config.generate(ws)` to write `dang.toml` at `ws.cwd`. It returns a
+modified `Workspace` and preserves other files. If the configuration has no
+`dang` version, it writes `dang = "2.1"`, including for a loaded file without a
+version. Call `config.withVersion(version)` to write another version. A loaded
+version is kept.
+
+The output keeps the loaded settings, but not their comments or layout. Keys
+are written in alphabetical order.
+
 ## Update existing SDK callers
 
 - Replace `withLegacyRuntimeDependency(source, name, pin)` with
