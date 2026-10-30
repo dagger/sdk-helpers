@@ -1,0 +1,521 @@
+"""Check manifest contracts with in-memory fixtures, so each call stays in the parent trace."""
+type ManifestChecks {
+  """JSON, TOML, both, or neither load, with TOML taking precedence and legacy-only JSON fields retained."""
+  loadsManifestFormats: Void @check {
+    let json = "{\"name\":\"from-json\",\"engineVersion\":\"v0.20.1\",\"include\":[\"json/**\"],\"source\":\"json-src\"," +
+      "\"sdk\":{\"source\":\"go\",\"config\":{\"keep\":true}}," +
+      "\"blueprint\":{\"source\":\"example.invalid/blueprint\"}," +
+      "\"toolchains\":[{\"source\":\"example.invalid/tools\"}]," +
+      "\"dependencies\":[{\"name\":\"json-dep\",\"source\":\"example.invalid/json-dep\",\"ignoreChecks\":[\"slow\"]}]," +
+      "\"codegen\":{\"automaticGitignore\":true}," +
+      "\"clients\":[{\"generator\":\"go\",\"directory\":\"client\"}]}"
+    let toml = "name = \"from-toml\"\nengineVersion = \"v0.20.3\"\ninclude = [\"toml/**\"]\nsource = \"toml-src\"\n\n" +
+      "[runtime]\nsource = \"go\"\n\n" +
+      "[[dependencies]]\nname = \"toml-dep\"\nsource = \"example.invalid/toml-dep\"\n\n" +
+      "[codegen]\nautomaticGitignore = false\n\n" +
+      "[entrypoint]\nkind = \"dang\"\nsource = \"main.dang\"\n"
+    let ws = self.workspace
+    let jsonFile = Dagger.file("dagger.json", json)
+    let tomlFile = Dagger.file("dagger-module.toml", toml)
+
+    let fromJSON = sdkHelpers.moduleManifest(loadJson: jsonFile).generate(ws)
+    ["name = \"from-json\"", "engineVersion = \"v0.20.1\"", "include = [\"json/**\"]", "source = \"json-src\"",
+      "[runtime]\n  source = \"go\"", "name = \"json-dep\"", "automaticGitignore = true",
+      "[[clients]]\n  generator = \"go\"\n  directory = \"client\""].each { expected =>
+      self.assertContains(fromJSON.file("dagger-module.toml").contents, expected)
+    }
+    ["blueprint", "toolchains", "ignoreChecks", "keep"].each { unexpected =>
+      self.assertAbsent(fromJSON.file("dagger-module.toml").contents, unexpected)
+    }
+    ["\"blueprint\"", "\"toolchains\"", "\"ignoreChecks\"", "\"keep\": true", "\"automaticGitignore\": true",
+      "\"generator\": \"go\""].each { expected =>
+      self.assertContains(fromJSON.file("dagger.json").contents, expected)
+    }
+
+    let fromTOML = sdkHelpers.moduleManifest(loadToml: tomlFile).generate(ws)
+    ["name = \"from-toml\"", "engineVersion = \"v0.20.3\"", "include = [\"toml/**\"]", "source = \"toml-src\"",
+      "name = \"toml-dep\"", "automaticGitignore = false",
+      "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\""].each { expected =>
+      self.assertContains(fromTOML.file("dagger-module.toml").contents, expected)
+    }
+    self.assertContains(fromTOML.file("dagger.json").contents, "\"name\": \"from-toml\"")
+    self.assertAbsent(fromTOML.file("dagger.json").contents, "entrypoint")
+
+    let fromBoth = sdkHelpers.moduleManifest(loadJson: jsonFile, loadToml: tomlFile).generate(ws)
+    ["from-json", "json-src", "json/**", "json-dep", "v0.20.1"].each { replaced =>
+      self.assertAbsent(fromBoth.file("dagger-module.toml").contents, replaced)
+      self.assertAbsent(fromBoth.file("dagger.json").contents, replaced)
+    }
+    ["blueprint", "toolchains", "keep", "[[clients]]"].each { unexpected =>
+      self.assertAbsent(fromBoth.file("dagger-module.toml").contents, unexpected)
+    }
+    ["name = \"from-toml\"", "engineVersion = \"v0.20.3\"", "name = \"toml-dep\"", "automaticGitignore = false",
+      "[entrypoint]\n  kind = \"dang\""].each { expected =>
+      self.assertContains(fromBoth.file("dagger-module.toml").contents, expected)
+    }
+    ["\"name\": \"from-toml\"", "\"engineVersion\": \"v0.20.3\"", "\"source\": \"toml-src\"", "\"toml/**\"",
+      "\"name\": \"toml-dep\"", "\"blueprint\"", "\"toolchains\"", "\"keep\": true",
+      "\"automaticGitignore\": true", "\"generator\": \"go\""].each { expected =>
+      self.assertContains(fromBoth.file("dagger.json").contents, expected)
+    }
+
+    let jsonWorkspace = ws.withNewFile("dagger.json", json)
+    let tomlWorkspace = ws.withNewFile("dagger-module.toml", toml)
+    let bothWorkspace = jsonWorkspace.withNewFile("dagger-module.toml", toml)
+    self.assertSameManifests(sdkHelpers.loadModuleManifest(jsonWorkspace).generate(ws), fromJSON)
+    self.assertSameManifests(sdkHelpers.loadModuleManifest(tomlWorkspace).generate(ws), fromTOML)
+    self.assertSameManifests(sdkHelpers.loadModuleManifest(bothWorkspace).generate(ws), fromBoth)
+
+    self.assertContains(self.generationError(sdkHelpers.loadModuleManifest(ws).generate(ws)),
+      "module manifest name is required")
+    let parentOnly = Dagger.directory.withNewFile("dagger.json", json).withNewFile("app/keep.txt", "keep")
+      .asWorkspace.withWorkdir("app")
+    self.assertContains(self.generationError(sdkHelpers.loadModuleManifest(parentOnly).generate(parentOnly)),
+      "module manifest name is required")
+    self.assertSameManifests(
+      sdkHelpers.loadModuleManifest(ws).withName("check").withLegacyGoRuntime(engineVersion: "v0.20.3").generate(ws),
+      sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime(engineVersion: "v0.20.3").generate(ws),
+    )
+  }
+
+  """A Dang entrypoint is written with the module name and replaces an earlier entrypoint."""
+  writesDangEntrypoint: Void @check {
+    let ws = self.workspace
+    let fresh = sdkHelpers.moduleManifest().withName("check")
+    [
+      fresh.withDangEntrypoint("main.dang"),
+      fresh.withDangEntrypoint("old.dang").withDangEntrypoint("main.dang"),
+      fresh.withModuleEntrypoint("github.com/acme/old").withDangEntrypoint("main.dang"),
+      fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withDangEntrypoint("main.dang").withoutLegacyFields,
+      sdkHelpers.moduleManifest(loadToml: self.loadedEntrypoint).withDangEntrypoint("main.dang"),
+    ].each { manifest =>
+      self.assertOnlyEntrypoint(manifest.generate(ws), "dang", "main.dang")
+    }
+    let legacy = fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withDangEntrypoint("main.dang").generate(ws)
+    self.assertContains(legacy.file("dagger-module.toml").contents,
+      "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\"")
+    self.assertAbsent(legacy.file("dagger.json").contents, "entrypoint")
+    self.assertAbsent(legacy.file("dagger.json").contents, "main.dang")
+  }
+
+  """A module entrypoint is written with the module name and replaces an earlier entrypoint."""
+  writesModuleEntrypoint: Void @check {
+    let ws = self.workspace
+    let source = "github.com/acme/entry@v1"
+    let fresh = sdkHelpers.moduleManifest().withName("check")
+    [
+      fresh.withModuleEntrypoint(source),
+      fresh.withModuleEntrypoint("github.com/acme/old").withModuleEntrypoint(source),
+      fresh.withDangEntrypoint("main.dang").withModuleEntrypoint(source),
+      fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withModuleEntrypoint(source).withoutLegacyFields,
+      sdkHelpers.moduleManifest(loadToml: self.loadedEntrypoint).withModuleEntrypoint(source),
+    ].each { manifest =>
+      self.assertOnlyEntrypoint(manifest.generate(ws), "module", source)
+    }
+    let legacy = fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withModuleEntrypoint(source).generate(ws)
+    self.assertContains(legacy.file("dagger-module.toml").contents,
+      "[entrypoint]\n  kind = \"module\"\n  source = " + JSON.encode(source))
+    self.assertAbsent(legacy.file("dagger.json").contents, "entrypoint")
+    self.assertAbsent(legacy.file("dagger.json").contents, source)
+  }
+
+  """Each built-in runtime method matches the generic setter for explicit, default, and loaded values."""
+  writesBuiltinLegacyRuntimes: Void @check {
+    let ws = self.workspace
+    let fresh = sdkHelpers.moduleManifest().withName("check")
+    let loaded = sdkHelpers.moduleManifest(loadToml: self.loadedRuntime)
+    self.assertBuiltinRuntime("go",
+      fresh.withLegacyGoRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyGoRuntime.generate(ws),
+      loaded.withLegacyGoRuntime.generate(ws))
+    self.assertBuiltinRuntime("dang",
+      fresh.withLegacyDangRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyDangRuntime.generate(ws),
+      loaded.withLegacyDangRuntime.generate(ws))
+    self.assertBuiltinRuntime("python",
+      fresh.withLegacyPythonRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyPythonRuntime.generate(ws),
+      loaded.withLegacyPythonRuntime.generate(ws))
+    self.assertBuiltinRuntime("typescript",
+      fresh.withLegacyTypescriptRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyTypescriptRuntime.generate(ws),
+      loaded.withLegacyTypescriptRuntime.generate(ws))
+    self.assertBuiltinRuntime("php",
+      fresh.withLegacyPHPRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyPHPRuntime.generate(ws),
+      loaded.withLegacyPHPRuntime.generate(ws))
+    self.assertBuiltinRuntime("elixir",
+      fresh.withLegacyElixirRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyElixirRuntime.generate(ws),
+      loaded.withLegacyElixirRuntime.generate(ws))
+    self.assertBuiltinRuntime("java",
+      fresh.withLegacyJavaRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyJavaRuntime.generate(ws),
+      loaded.withLegacyJavaRuntime.generate(ws))
+
+    let explicit = loaded.withLegacyPythonRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws)
+      .file("dagger-module.toml").contents
+    self.assertContains(explicit, "engineVersion = \"v0.20.3\"")
+    self.assertContains(explicit, "source = \"src\"")
+    self.assertAbsent(explicit, "v0.19.0")
+    self.assertAbsent(explicit, "loaded-src")
+
+    let current = self.engineVersion
+    [
+      {{given: "0.20.3", written: "v0.20.3"}},
+      {{given: "v0.20.3", written: "v0.20.3"}},
+      {{given: "latest", written: current}},
+      {{given: "current", written: current}},
+      {{given: "", written: current}},
+      {{given: "not-a-version", written: "v0.11.9"}},
+    ].each { version =>
+      self.assertContains(fresh.withLegacyRuntime("go", engineVersion: version.given).generate(ws)
+        .file("dagger-module.toml").contents, "engineVersion = " + JSON.encode(version.written))
+    }
+    let unnormalized = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+      "name = \"check\"\nengineVersion = \"0.20.3\"\n\n[runtime]\nsource = \"go\"\n"))
+    self.assertContains(unnormalized.generate(ws).file("dagger-module.toml").contents, "engineVersion = \"0.20.3\"")
+    self.assertContains(unnormalized.withLegacyGoRuntime.generate(ws).file("dagger-module.toml").contents,
+      "engineVersion = \"v0.20.3\"")
+  }
+
+  """Dependencies are removed by name, by unnamed source, by list replacement, or all at once."""
+  removesLegacyDependencies: Void @check {
+    let directory = Dagger.directory
+      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("app/keep.txt", "keep")
+    let module = directory.asModuleSource(sourceRootPath: "deps/lib")
+    let ws = directory.asWorkspace.withWorkdir("app")
+    let remove = "example.invalid/remove"
+    let unnamed = "example.invalid/unnamed"
+    let keep = "example.invalid/keep"
+    [
+      sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
+        "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[" +
+          "{\"name\":\"remove\",\"source\":" + JSON.encode(remove) + "}," +
+          "{\"source\":" + JSON.encode(unnamed) + "}," +
+          "{\"name\":\"keep\",\"source\":" + JSON.encode(keep) + "}]}")),
+      sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\nsource = \"go\"\n\n" +
+          "[[dependencies]]\nname = \"remove\"\nsource = " + JSON.encode(remove) + "\n\n" +
+          "[[dependencies]]\nsource = " + JSON.encode(unnamed) + "\n\n" +
+          "[[dependencies]]\nname = \"keep\"\nsource = " + JSON.encode(keep) + "\n")),
+    ].each { loaded =>
+      self.assertDependencies(loaded.withoutLegacyRuntimeDependency("remove").generate(ws),
+        [unnamed, keep], [remove])
+      self.assertDependencies(loaded.withoutLegacyRuntimeDependency(unnamed).generate(ws),
+        [remove, keep], [unnamed])
+      self.assertDependencies(loaded.withoutLegacyRuntimeDependency(keep).generate(ws),
+        [remove, unnamed, keep], [])
+      self.assertDependencies(loaded.withLegacyRuntimeDependencies(modules: [module]).generate(ws),
+        ["../deps/lib"], [remove, unnamed, keep])
+      [
+        loaded.withLegacyRuntimeDependencies(modules: []).generate(ws),
+        loaded.withoutLegacyRuntimeDependencies.generate(ws),
+        loaded.withLegacyRuntimeDependency(module).withoutLegacyRuntimeDependencies.generate(ws),
+      ].each { cleared =>
+        self.assertDependencies(cleared, [], [remove, unnamed, keep, "../deps/lib"])
+        self.assertAbsent(cleared.file("dagger-module.toml").contents, "[[dependencies]]")
+        self.assertAbsent(cleared.file("dagger.json").contents, "\"dependencies\"")
+      }
+      self.assertDependencies(loaded.generate(ws), [remove, unnamed, keep], ["../deps/lib"])
+    }
+    null
+  }
+
+  """Repeated generation and load then regenerate are stable in a nested workspace."""
+  regeneratesManifests: Void @check {
+    let directory = Dagger.directory
+      .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
+      .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
+      .withNewFile("app/keep.txt", "keep")
+      .withNewFile("root.txt", "root")
+    let ws = directory.asWorkspace.withWorkdir("app")
+    let manifest = sdkHelpers.moduleManifest().withName("check")
+      .withLegacyGoRuntime(moduleSource: "src", engineVersion: "v0.20.3")
+      .withLegacyInclude("src/**")
+      .withLegacyRuntimeDependency(directory.asModuleSource(sourceRootPath: "deps/lib"))
+      .withDangEntrypoint("main.dang")
+    let first = manifest.generate(ws)
+    self.assertWorkspaceKept(first, ws)
+    let loaded = sdkHelpers.loadModuleManifest(first)
+    [
+      manifest.generate(first),
+      manifest.generate(first, lock: true),
+      loaded.generate(first),
+      loaded.generate(first, lock: true),
+    ].each { regenerated =>
+      self.assertSameManifests(regenerated, first)
+      self.assertWorkspaceKept(regenerated, ws)
+    }
+
+    let withoutJSON = loaded.generate(first, lock: true, legacyJson: false)
+    self.assertSame(withoutJSON.file("dagger-module.toml").contents, first.file("dagger-module.toml").contents)
+    self.assertWorkspaceKept(withoutJSON, ws)
+    if (withoutJSON.directory(".").exists("dagger.json")) {
+      raise "JSON disabled must remove dagger.json from the output"
+    }
+    if (!first.directory(".").exists("dagger.json")) {
+      raise "generation must preserve the input workspace"
+    }
+    self.assertSameManifests(sdkHelpers.loadModuleManifest(withoutJSON).generate(withoutJSON), first)
+    if (sdkHelpers.loadModuleManifest(withoutJSON).generate(withoutJSON, legacyJson: false)
+      .directory(".").exists("dagger.json")) {
+      raise "JSON disabled must not restore dagger.json"
+    }
+    null
+  }
+
+  """Validation and loading reject missing fields, bad entrypoints, bad sources, and newer engine versions."""
+  rejectsInvalidManifests: Void @check {
+    let fresh = sdkHelpers.moduleManifest()
+    let named = fresh.withName("check")
+    [
+      {{manifest: fresh, message: "module manifest name is required"}},
+      {{manifest: named, message: "module manifest requires an entrypoint or legacy runtime"}},
+      {{manifest: named.withLegacyGoRuntime(engineVersion: "v0.20.3").withoutLegacyFields,
+        message: "module manifest requires an entrypoint or legacy runtime"}},
+      {{manifest: named.withLegacyInclude("src/**"), message: "module manifest legacy runtime is required"}},
+      {{manifest: named.withLegacyRuntime("/opt/runtime"), message: "local dependency source must be relative"}},
+      {{manifest: named.withLegacyRuntime("C:/runtime"), message: "local dependency source must be relative"}},
+      {{manifest: sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
+        "{\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\"}")), message: "module manifest name is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "engineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n")), message: "module manifest name is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
+        "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\"}")), message: "module manifest legacy runtime is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\nengineVersion = \"v0.20.3\"\n")), message: "module manifest legacy runtime is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
+        "{\"name\":\"check\",\"sdk\":\"go\"}")), message: "module manifest legacy engine version is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\n[runtime]\nsource = \"go\"\n")), message: "module manifest legacy engine version is required"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\n[entrypoint]\nkind = \"dang\"\n")),
+        message: "module manifest entrypoint kind and source must be set together"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\n[entrypoint]\nsource = \"main.dang\"\n")),
+        message: "module manifest entrypoint kind and source must be set together"}},
+      {{manifest: sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+        "name = \"check\"\n[entrypoint]\nkind = \"python\"\nsource = \"main.py\"\n")),
+        message: "module manifest entrypoint kind must be dang or module"}},
+    ].each { invalid =>
+      let validated = {
+        invalid.manifest.validate
+        "validated"
+      } rescue {
+        error: Error => error.message
+      }
+      self.assertContains(validated, invalid.message)
+      self.assertContains(self.generationError(invalid.manifest.generate(self.workspace)), invalid.message)
+    }
+
+    let runtime = named.withLegacyGoRuntime(engineVersion: "v0.20.3")
+    [
+      {{target: "v0.20.2", normalized: "v0.20.2"}},
+      {{target: "0.20.2", normalized: "v0.20.2"}},
+      {{target: "v0.20", normalized: "v0.20"}},
+      {{target: "not-a-version", normalized: "v0.11.9"}},
+    ].each { version =>
+      let validated = {
+        runtime.validate(targetEngineVersion: version.target)
+        "validated"
+      } rescue {
+        error: Error => error.message
+      }
+      self.assertContains(validated, "module manifest legacy runtime requires dagger v0.20.3, " +
+        "but target engine is " + version.normalized)
+    }
+    ["v0.20.3", "0.20.3", "v0.20.3-beta.1", "v0.21.0", "v0.100.0", "latest", "current"].each { target =>
+      runtime.validate(targetEngineVersion: target)
+    }
+    named.withDangEntrypoint("main.dang").validate(targetEngineVersion: "not-a-version")
+
+    self.assertContains(self.jsonLoadError("{\"name\":\"check\",\"engineVersion\":\"v99.0.0\",\"sdk\":\"go\"}"),
+      "load dagger.json: module requires dagger v99.0.0, but you have ")
+    self.assertContains(self.tomlLoadError("name = \"check\"\nengineVersion = \"v99.0.0\"\n[runtime]\nsource = \"go\"\n"),
+      "load dagger-module.toml: module requires dagger v99.0.0, but you have ")
+    ["{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"/opt/runtime\"}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":\"C:/runtime\"}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"blueprint\":{\"source\":\"/opt/blueprint\"}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"toolchains\":[{\"source\":\"/opt/tools\"}]}",
+    ].each { contents =>
+      self.assertContains(self.jsonLoadError(contents), "load dagger.json: local dependency source must be relative")
+    }
+    self.assertContains(self.tomlLoadError("name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"/opt/runtime\"\n"),
+      "load dagger-module.toml: local dependency source must be relative")
+  }
+
+  """Malformed input, wrong field types, and forbidden fields are rejected with the manifest filename."""
+  rejectsInvalidManifestFiles: Void @check {
+    ["{", "not json", "[]", "\"text\"",
+      "{\"name\":1,\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\"}",
+      "{\"name\":\"check\",\"engineVersion\":1,\"sdk\":\"go\"}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"source\":1,\"sdk\":\"go\"}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"include\":\"src\",\"sdk\":\"go\"}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":1}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":\"go\",\"pin\":1}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":{\"source\":\"go\",\"debug\":\"yes\"}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":{}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[{\"source\":1}]}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"codegen\":{\"automaticGitignore\":\"no\"}}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"clients\":[{\"generator\":1,\"directory\":\"client\"}]}",
+      "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"disableDefaultFunctionCaching\":\"yes\"}",
+    ].each { contents =>
+      self.assertContains(self.jsonLoadError(contents), "load dagger.json: ")
+    }
+    ["name = ", "[runtime",
+      "name = 1\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n",
+      "name = \"check\"\nengineVersion = 1\n[runtime]\nsource = \"go\"\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\nsource = 1\n[runtime]\nsource = \"go\"\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\ninclude = \"src\"\n[runtime]\nsource = \"go\"\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\ndisableDefaultFunctionCaching = \"yes\"\n[runtime]\nsource = \"go\"\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = 1\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n[[dependencies]]\nsource = 1\n",
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\n[runtime]\nsource = \"go\"\n[codegen]\nautomaticGitignore = \"no\"\n",
+      "name = \"check\"\n[entrypoint]\nkind = 1\nsource = \"main.dang\"\n",
+    ].each { contents =>
+      self.assertContains(self.tomlLoadError(contents), "load dagger-module.toml: ")
+    }
+
+    self.assertContains(self.jsonLoadError("{\"name\":\"check\",\"engineVersion\":\"v0.20.3\",\"runtime\":{\"source\":\"go\"}}"),
+      "load dagger.json: dagger.json uses sdk instead of runtime")
+    self.assertContains(self.tomlLoadError("name = \"check\"\nengineVersion = \"v0.20.3\"\n[sdk]\nsource = \"go\"\n"),
+      "load dagger-module.toml: dagger-module.toml uses runtime instead of sdk")
+    self.assertContains(self.tomlLoadError("name = \"check\"\n[blueprint]\nsource = \"example.invalid/blueprint\"\n"),
+      "load dagger-module.toml: dagger-module.toml does not support \"blueprint\"")
+    self.assertContains(self.tomlLoadError("name = \"check\"\n[[toolchains]]\nsource = \"example.invalid/tools\"\n"),
+      "load dagger-module.toml: dagger-module.toml does not support \"toolchains\"")
+    ["customizations", "ignoreChecks", "ignoreGenerators", "ignoreServices", "portMappings"].each { field =>
+      self.assertContains(
+        self.tomlLoadError("name = \"check\"\n[[dependencies]]\nsource = \"example.invalid/dep\"\n" + field + " = []\n"),
+        "load dagger-module.toml: dagger-module.toml dependency 0 does not support " + JSON.encode(field),
+      )
+    }
+    null
+  }
+
+  let assertBuiltinRuntime(runtime: String!, explicit: Workspace!, defaults: Workspace!, loaded: Workspace!): Void {
+    let encoded = JSON.encode(runtime)
+    let fresh = sdkHelpers.moduleManifest().withName("check")
+    let table = "[runtime]\n  source = " + encoded + "\n"
+    let sdk = "\"sdk\": {\n    \"source\": " + encoded + "\n  }"
+    self.assertSame(explicit.file("dagger-module.toml").contents,
+      "name = \"check\"\nengineVersion = \"v0.20.3\"\nsource = \"src\"\n\n" + table)
+    self.assertContains(explicit.file("dagger.json").contents, sdk)
+    self.assertContains(explicit.file("dagger.json").contents, "\"engineVersion\": \"v0.20.3\"")
+    self.assertContains(explicit.file("dagger.json").contents, "\"source\": \"src\"")
+    self.assertSameManifests(explicit,
+      fresh.withLegacyRuntime(runtime, moduleSource: "src", engineVersion: "v0.20.3").generate(self.workspace))
+
+    self.assertSame(defaults.file("dagger-module.toml").contents,
+      "name = \"check\"\nengineVersion = " + JSON.encode(self.engineVersion) + "\n\n" + table)
+    self.assertContains(defaults.file("dagger.json").contents, sdk)
+    self.assertSameManifests(defaults, fresh.withLegacyRuntime(runtime).generate(self.workspace))
+
+    self.assertSame(loaded.file("dagger-module.toml").contents,
+      "name = \"loaded\"\nengineVersion = \"v0.19.0\"\ninclude = [\"loaded/**\"]\nsource = \"loaded-src\"\n\n" + table)
+    self.assertContains(loaded.file("dagger.json").contents, sdk)
+    self.assertContains(loaded.file("dagger.json").contents, "\"source\": \"loaded-src\"")
+    self.assertSameManifests(loaded,
+      sdkHelpers.moduleManifest(loadToml: self.loadedRuntime).withLegacyRuntime(runtime).generate(self.workspace))
+  }
+
+  let assertOnlyEntrypoint(output: Workspace!, kind: String!, source: String!): Void {
+    self.assertSame(output.file("dagger-module.toml").contents,
+      "name = \"check\"\n\n[entrypoint]\n  kind = " + JSON.encode(kind) + "\n  source = " + JSON.encode(source) + "\n")
+    if (output.directory(".").exists("dagger.json")) {
+      raise "an entrypoint without legacy fields must not generate dagger.json"
+    }
+    null
+  }
+
+  let assertDependencies(output: Workspace!, present: [String!]!, absent: [String!]!): Void {
+    present.each { source =>
+      self.assertContains(output.file("dagger-module.toml").contents, "source = " + JSON.encode(source))
+      self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(source))
+    }
+    absent.each { source =>
+      self.assertAbsent(output.file("dagger-module.toml").contents, JSON.encode(source))
+      self.assertAbsent(output.file("dagger.json").contents, JSON.encode(source))
+    }
+    null
+  }
+
+  let assertWorkspaceKept(output: Workspace!, input: Workspace!): Void {
+    if (output.cwd != input.cwd) {
+      raise "generation must preserve the current directory"
+    }
+    if (output.file("keep.txt").contents != "keep" or output.file("/root.txt").contents != "root") {
+      raise "generation must preserve other files"
+    }
+    if (output.directory("/").exists("dagger-module.toml")) {
+      raise "generation must write manifests only in the current directory"
+    }
+    if (input.directory(".").exists("dagger-module.toml")) {
+      raise "generation must preserve the input workspace"
+    }
+    null
+  }
+
+  let assertSameManifests(actual: Workspace!, expected: Workspace!): Void {
+    ["dagger-module.toml", "dagger.json"].each { file =>
+      self.assertSame(actual.file(file).contents, expected.file(file).contents)
+    }
+    null
+  }
+
+  let assertSame(actual: String!, expected: String!): Void {
+    if (actual != expected) {
+      raise "expected:\n" + expected + "\ngot:\n" + actual
+    }
+    null
+  }
+
+  let assertContains(contents: String!, expected: String!): Void {
+    if (!contents.contains(expected)) {
+      raise "expected " + JSON.encode(expected) + " in:\n" + contents
+    }
+    null
+  }
+
+  let assertAbsent(contents: String!, unexpected: String!): Void {
+    if (contents.contains(unexpected)) {
+      raise "unexpected " + JSON.encode(unexpected) + " in:\n" + contents
+    }
+    null
+  }
+
+  let generationError(output: Workspace!): String! {
+    output.file("dagger-module.toml").contents rescue {
+      error: Error => error.message
+    }
+  }
+
+  let jsonLoadError(contents: String!): String! {
+    self.generationError(sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json", contents)).generate(self.workspace))
+  }
+
+  let tomlLoadError(contents: String!): String! {
+    self.generationError(sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", contents)).generate(self.workspace))
+  }
+
+  let loadedEntrypoint: File! {
+    Dagger.file("dagger-module.toml", "name = \"check\"\n\n[entrypoint]\nkind = \"module\"\nsource = \"github.com/acme/old\"\n")
+  }
+
+  let loadedRuntime: File! {
+    Dagger.file("dagger-module.toml",
+      "name = \"loaded\"\nengineVersion = \"v0.19.0\"\ninclude = [\"loaded/**\"]\nsource = \"loaded-src\"\n\n" +
+        "[runtime]\nsource = \"go\"\n")
+  }
+
+  let engineVersion: String! {
+    Dagger.version.split("+")[0] ?? Dagger.version
+  }
+
+  let workspace: Workspace! {
+    Dagger.directory.withNewFile("keep.txt", "keep").asWorkspace
+  }
+}

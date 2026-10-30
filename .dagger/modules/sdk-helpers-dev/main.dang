@@ -1,5 +1,8 @@
 """Development module for sdk-helpers"""
 type SdkHelpersDev {
+  """Check manifest contracts with in-memory fixtures."""
+  manifest: ManifestChecks! { ManifestChecks }
+
   """A module source of "." is the default, so it is not written to dagger-module.toml."""
   omitsDefaultModuleSource: Void @check {
     self.assertNoModuleSource(
@@ -63,6 +66,7 @@ type SdkHelpersDev {
     self.assertContains(locked.file("dagger-module.toml").contents, "pin = \"dep-pin\"")
     self.assertContains(locked.file("dagger.json").contents, "\"pin\": \"dep-pin\"")
     self.assertAbsent(locked.file("dagger.json").contents, "stale")
+    self.assertNoPins(loaded.generate(locked))
   }
 
   """Generation preserves loaded sources without resolving missing pins."""
@@ -215,20 +219,25 @@ type SdkHelpersDev {
     let runtime = "github.com/dagger/python-sdk/runtime@v1"
     let module = Dagger.moduleSource("github.com/dagger/sdk-helpers@main", refPin: self.gitCommit)
     let manifest = sdkHelpers.moduleManifest().withName("check")
-      .withLegacyRuntime(runtime, engineVersion: "v0.20.3")
+      .withLegacyRuntime(runtime, moduleSource: "module-src", engineVersion: "v0.20.3")
       .withLegacyInclude("src/**")
+      .withLegacyInclude("extra/**")
       .withDangEntrypoint("main.dang")
       .withLegacyRuntimeDependency(module)
     let output = manifest.generate(self.workspace, lock: true)
     let toml = output.file("dagger-module.toml").contents
     self.assertContains(toml, "[runtime]\n  source = " + JSON.encode(runtime))
-    self.assertContains(toml, "include = [\"src/**\"]")
+    self.assertContains(toml, "include = [\"src/**\", \"extra/**\"]")
+    self.assertContains(toml, "source = \"module-src\"")
     self.assertContains(toml, "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\"")
     self.assertContains(toml, "pin = " + JSON.encode(self.gitCommit))
     self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
+    self.assertContains(output.file("dagger.json").contents, "\"src/**\",\n    \"extra/**\"")
     let reset = manifest.withoutLegacyFields.generate(self.workspace)
-    self.assertAbsent(reset.file("dagger-module.toml").contents, "[runtime]")
-    self.assertAbsent(reset.file("dagger-module.toml").contents, "python-sdk")
+    ["[runtime]", "python-sdk", "engineVersion", "include", "module-src", "[[dependencies]]", "pin ="].each { field =>
+      self.assertAbsent(reset.file("dagger-module.toml").contents, field)
+    }
+    self.assertContains(reset.file("dagger-module.toml").contents, "[entrypoint]\n  kind = \"dang\"")
     if (reset.directory(".").exists("dagger.json")) {
       raise "a manifest without legacy fields must not generate dagger.json"
     }
@@ -282,6 +291,28 @@ type SdkHelpersDev {
     self.assertContains(added, "name = \"alias\"")
     self.assertContains(added, "name = \"stale\"")
     self.assertAbsent(added, "name = \"lib\"")
+
+    let jsonWorkspace = directory.withoutFile("app/dagger-module.toml")
+      .withNewFile("app/dagger.json",
+        "{\"name\":\"app\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"go\",\"dependencies\":[" +
+          "{\"name\":\"alias\",\"source\":\"../deps/lib\",\"ignoreChecks\":[\"slow\"],\"ignoreGenerators\":[\"gen\"]," +
+          "\"ignoreServices\":[\"db\"],\"customizations\":[{\"argument\":\"src\",\"defaultPath\":\"/\"}]}," +
+          "{\"name\":\"stale\",\"source\":\"../stale\"}]}")
+      .asWorkspace.withWorkdir("app")
+    let loaded = sdkHelpers.loadModuleManifest(jsonWorkspace)
+    [
+      loaded.withLegacyRuntimeDependencies(modules: [module]).generate(jsonWorkspace),
+      loaded.withLegacyRuntimeDependency(module).generate(jsonWorkspace),
+    ].each { output =>
+      let json = output.file("dagger.json").contents
+      ["\"name\": \"alias\"", "\"source\": \"../deps/lib\"", "\"ignoreChecks\"", "\"slow\"", "\"ignoreGenerators\"",
+        "\"gen\"", "\"ignoreServices\"", "\"db\"", "\"customizations\"", "\"defaultPath\": \"/\""].each { expected =>
+        self.assertContains(json, expected)
+      }
+      self.assertAbsent(json, "\"name\": \"lib\"")
+      self.assertAbsent(output.file("dagger-module.toml").contents, "ignoreChecks")
+    }
+    null
   }
 
   """Absolute local paths are rejected when JSON or TOML is loaded."""
@@ -333,6 +364,7 @@ type SdkHelpersDev {
     let locked = manifest.generate(self.workspace, lock: true)
     self.assertContains(locked.file("dagger-module.toml").contents, "pin = " + JSON.encode(self.gitCommit))
     self.assertContains(locked.file("dagger.json").contents, "\"pin\": " + JSON.encode(self.gitCommit))
+    self.assertNoPins(manifest.generate(locked))
   }
 
   """A module from the workspace's own Git checkout is written as a path, not a URL."""
@@ -349,13 +381,14 @@ type SdkHelpersDev {
     self.assertAbsent(same, "pin =")
 
     # The same repository at another ref is a different source, so it stays a URL.
-    let other = Dagger.moduleSource("github.com/dagger/sdk-helpers@main")
+    let other = Dagger.moduleSource("github.com/dagger/sdk-helpers@" + self.otherGitCommit)
     let elsewhere = manifest.withLegacyRuntimeDependencies(modules: [other]).generate(ws)
       .file("dagger-module.toml").contents
     self.assertContains(elsewhere, "source = " + JSON.encode(other.asString))
   }
 
   let gitCommit: String! = "64645f1967d3dba6fce951dd61ae4acd8d9b0861"
+  let otherGitCommit: String! = "41fd4d3062d75a836429c6db5c42b4c6c9178ca4"
 
   let assertNoPins(ws: Workspace!): Void {
     self.assertAbsent(ws.file("dagger.json").contents, "\"pin\":")

@@ -1,4 +1,0 @@
-"""Local dependency for the Go SDK check."""
-type Dep {
-  hello: String! { "hello from the dependency" }
-}
