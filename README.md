@@ -1,8 +1,7 @@
 # SDK helpers
 
 Use `ModuleManifest` to load, change, and generate Dagger module manifests.
-The manifest selects engine API version `v1.0.0`. Checks pass on engine
-`v1.0.0-beta.11`. Earlier beta releases have not been tested.
+The manifest selects engine API version `v1.0.0`.
 Callers can still select `v0.21.9` on that engine. The helper needs the newer
 API for its own Workspace operations.
 
@@ -102,15 +101,85 @@ them from that object. The same object can generate output with or without pins.
 
 ## Run checks
 
+Run each check by name, one at a time:
+
 ```sh
-dagger check
+dagger check --generated=false manifest/loads-manifest-formats
+dagger check --generated=false omits-default-module-source
+dagger check --generated=false e-2-e/legacy-caller-check
 ```
 
-The workspace runs the manifest checks and the checks in
-`.dagger/modules/e2e`. These include a caller that selects the `v0.21.9` API
-and Go SDK generation against this checkout.
+List the check names with `dagger check -l`.
 
-The Git checks fetch fixed commits. The Go SDK check applies
-`.dagger/modules/e2e/go-sdk.patch` to its fixed SDK commit in an isolated
-container. The patch updates the SDK to the new helper API and adds its lock
-option. It does not change the upstream SDK repository.
+All 26 named checks passed with CLI `v1.0.0-beta.21` (commit `a7a2e64e`) and
+engine `v1.0.0-beta.21`.
+
+### Coverage
+
+Each check has an acceptance cap. A cap is a proposed limit, not a measured
+runtime. A check over its cap fails acceptance.
+
+| Check | Contract | Cap | Git download |
+| --- | --- | --- | --- |
+| `manifest/loads-manifest-formats` | JSON only, TOML only, both, and neither. TOML precedence and retained legacy-only JSON fields. | 120 s | None |
+| `manifest/writes-dang-entrypoint` | A Dang source file: kind `dang`, source, name, replacement of an earlier entrypoint, and no legacy output. | 120 s | None |
+| `manifest/writes-module-entrypoint` | A versioned module reference: kind `module`, source, name, replacement of an earlier entrypoint, and no legacy output. | 120 s | None |
+| `manifest/writes-builtin-legacy-runtimes` | Each runtime method matches `withLegacyRuntime`. Explicit, default, and loaded values, and version normalization. | 120 s | None |
+| `manifest/removes-legacy-dependencies` | Named removal, unnamed-source removal, list replacement, and clearing. Other dependencies and the original builder stay intact. | 120 s | None |
+| `manifest/regenerates-manifests` | Stable `generate(ws, lock, legacyJson)`, repeated generation, and load then regenerate in a nested workspace. | 120 s | None |
+| `manifest/rejects-invalid-manifests` | `validate`, loading, and source validation. Missing fields, bad entrypoints, and target-version incompatibility. | 120 s | None |
+| `manifest/rejects-invalid-manifest-files` | Malformed input, wrong field types, and format-specific fields. Errors start with the manifest filename. | 120 s | None |
+| `omits-default-module-source` | A module source of `.` is not written to TOML. | 120 s | None |
+| `keeps-loaded-module-source-unset` | Regeneration adds no module source. | 120 s | None |
+| `keeps-workspace-manifest-fields` | Loaded fields that the caller does not set remain. | 120 s | None |
+| `controls-loaded-jsonpins` | Loaded JSON pins are written only with `lock: true`. | 120 s | None |
+| `controls-loaded-tomlpins` | Loaded TOML pins are written only with `lock: true`. | 120 s | None |
+| `skips-pin-lookup` | Generation does not look up missing pins. | 120 s | None |
+| `places-local-dependencies` | Local paths are relative to `ws.cwd` and have no pins. | 120 s | None |
+| `replaces-dependency` | A dependency with the same name is replaced without a duplicate. | 120 s | None |
+| `reuses-dependency-with-same-source` | A loaded dependency with the same source keeps its alias and JSON settings. | 120 s | None |
+| `writes-custom-legacy-runtime` | A custom runtime source is written as given. | 120 s | None |
+| `keeps-loaded-custom-legacy-runtime` | A loaded custom runtime and its pin remain until replaced. | 120 s | None |
+| `rejects-bare-custom-legacy-runtime` | An unknown single-word runtime is rejected with the local path to use. | 120 s | None |
+| `rejects-absolute-dependency-paths` | Absolute dependency sources are rejected when loaded. | 120 s | None |
+| `controls-legacy-jsonoutput` | `legacyJson: false` removes JSON and retains TOML. | 120 s | None |
+| `composes-custom-legacy-runtime` | A custom runtime composes with the other setters. `withLegacyInclude` adds and `withoutLegacyFields` resets. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
+| `honors-supplied-git-module` | A supplied commit is written only with `lock: true`. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
+| `places-same-repository-git-modules` | A module from the workspace repository is a relative path without a pin. Another commit stays a URL. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861`, `41fd4d3062d75a836429c6db5c42b4c6c9178ca4` |
+| `e-2-e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. | 180 s | None |
+
+All Git downloads come from `github.com/dagger/sdk-helpers`. No check downloads
+a CLI or builds Go code.
+
+### Telemetry
+
+A named check runs in the trace of its own `dagger check` command. Each helper
+call in that check stays in the same trace. No check starts a nested CLI or
+session.
+
+These statements are expectations. No exported trace has confirmed these
+expectations.
+
+Read a result with these commands:
+
+```sh
+dagger trace <trace-id> --check <check-name>
+dagger trace <trace-id> --check <check-name> --log -o check.log
+```
+
+A failed check must identify the failing call in its trace. A missing check span
+is a test infrastructure bug.
+
+### Go SDK coverage
+
+This repository no longer compiles a generated Go module against the candidate
+helper on each pull request. The nested check that did so was removed because
+trace `b8b7c2110de2ddf450e8f6c2d76c51bb` was cancelled at 30 minutes with exit
+137. That trace has inner CLI, connection, and subscription spans, but no SDK
+check or `generateScope` spans. The trace does not establish why the inner
+command stalled.
+
+`dagger/go-sdk` commit `7eecc79efbbb8caf638aa28fcc5c34a7698ed5aa` has
+`ManifestChecks.localClientCheck` and `gitClientCheck`, which cover generation
+and compilation. Those checks use the helper dependency that go-sdk configures.
+They do not test a pull request in this repository automatically.

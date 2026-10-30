@@ -1,25 +1,33 @@
 # Integration checks
 
-The root `dagger.toml` registers this module. Run all checks with `dagger check`.
+The root `dagger.toml` registers this module. Run its check by name:
 
-`legacyCallerCheck` calls the public helper from a module that declares
-`v0.21.9`. The helper keeps its own `v1.0.0` API selection.
+```sh
+dagger check --generated=false e-2-e/legacy-caller-check
+```
 
-`goSdkCheck` runs the Go SDK in an isolated container. It uses SDK commit
-`fef4ddfc4d6ec0ffa2c0aa3361f5466d800d4069` and the helper source from this
-workspace. `go-sdk.patch` updates the SDK caller to `withLegacyRuntimeDependency(module)`
-and `generate(ws, lock)`. The patch also adds an SDK lock option for this test.
+The root `README.md` lists every check and the validated CLI and engine pair.
 
-The inner checks cover:
+## Coverage
 
-- A Go module with a local client in a nested directory.
-- Both manifest formats, with relative local paths and no default pins.
-- Generated module and standalone client files.
-- Repeated generation without manifest changes.
-- Compilation of a Go function that calls the local dependency.
-- A Git client with default output and with locking enabled.
+| Check | Contract | Cap | Git download |
+| --- | --- | --- | --- |
+| `e-2-e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. The helper keeps its own `v1.0.0` API selection. | 180 s | None |
 
-The container uses the `v1.0.0-beta.11` Linux CLI with access to the running
-test engine. The first run downloads the CLI, SDK source, and build images.
+The cap is a proposed acceptance limit, not a measured runtime.
 
-When the SDK adopts this API, update the fixed SDK commit and remove the patch.
+## Telemetry
+
+`fixtures/legacy-caller` calls the helper directly. The calls stay in the trace
+of the `dagger check` command, with no downloaded CLI and no Go build.
+
+Read a result with this command:
+
+```sh
+dagger trace <trace-id> --check e-2-e/legacy-caller-check
+```
+
+## Go SDK coverage
+
+This module no longer runs the Go SDK. The root `README.md` explains the removal
+and the lost per-PR Go compilation against the candidate helper.
