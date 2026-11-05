@@ -13,8 +13,10 @@ Both options are optional. These are their defaults.
 The method returns a modified `Workspace`. It writes `dagger-module.toml`
 at `ws.cwd`. It also writes `dagger.json` when legacy configuration
 exists. If `legacyJson` is false, or no legacy configuration exists, it removes
-`dagger.json` from the returned workspace. It preserves other files and the
-current directory. The input workspace stays unchanged.
+`dagger.json` from the returned workspace, even when `.gitignore` matches it.
+It reads only `dagger.json` from the workspace, not other files in `ws.cwd`. It
+preserves other files, including ignored files, and the current directory. The
+input workspace stays unchanged.
 
 TOML output is always enabled. Selection of a future TOML format is not yet
 supported.
@@ -156,7 +158,7 @@ runtime. A check over its cap fails acceptance.
 | `manifest/writes-module-entrypoint` | A versioned module reference: kind `module`, source, name, replacement of an earlier entrypoint, and no legacy output. | 120 s | None |
 | `manifest/writes-builtin-legacy-runtimes` | Each runtime method matches `withLegacyRuntime`. Explicit, default, and loaded values, and version normalization. | 120 s | None |
 | `manifest/removes-legacy-dependencies` | Named removal, unnamed-source removal, list replacement, and clearing. Other dependencies and the original builder stay intact. | 120 s | None |
-| `manifest/regenerates-manifests` | Stable `generate(ws, lock, legacyJson)`, repeated generation, and load then regenerate in a nested workspace. | 120 s | None |
+| `manifest/regenerates-manifests` | Stable `generate(ws, lock, legacyJson)`, repeated generation, and load then regenerate in a nested workspace. Ignored `dagger.json` removal and ignored file retention. | 120 s | None |
 | `manifest/rejects-invalid-manifests` | `validate`, loading, and source validation. Missing fields, bad entrypoints, and target-version incompatibility. | 120 s | None |
 | `manifest/rejects-invalid-manifest-files` | Malformed input, wrong field types, and format-specific fields. Errors start with the manifest filename. | 120 s | None |
 | `omits-default-module-source` | A module source of `.` is not written to TOML. | 120 s | None |
@@ -172,7 +174,7 @@ runtime. A check over its cap fails acceptance.
 | `keeps-loaded-custom-legacy-runtime` | A loaded custom runtime and its pin remain until replaced. | 120 s | None |
 | `rejects-bare-custom-legacy-runtime` | An unknown single-word runtime is rejected with the local path to use. | 120 s | None |
 | `rejects-absolute-dependency-paths` | Absolute dependency sources are rejected when loaded. | 120 s | None |
-| `controls-legacy-jsonoutput` | `legacyJson: false` removes JSON and retains TOML. | 120 s | None |
+| `controls-legacy-jsonoutput` | `legacyJson: false` removes JSON and retains TOML. An ignored `dagger.json` is removed or written, and ignored files remain. | 120 s | None |
 | `composes-custom-legacy-runtime` | A custom runtime composes with the other setters. `withLegacyInclude` adds and `withoutLegacyFields` resets. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
 | `honors-supplied-git-module` | A supplied commit is written only with `lock: true`. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
 | `places-same-repository-git-modules` | A module from the workspace repository is a relative path without a pin. Another commit stays a URL. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861`, `41fd4d3062d75a836429c6db5c42b4c6c9178ca4` |

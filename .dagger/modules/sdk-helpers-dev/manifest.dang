@@ -230,6 +230,8 @@ type ManifestChecks {
       .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
       .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
       .withNewFile("app/keep.txt", "keep")
+      .withNewFile("app/.gitignore", "dagger.json\n.cache/\n")
+      .withNewFile("app/.cache/blob", "ignored")
       .withNewFile("root.txt", "root")
     let ws = directory.asWorkspace.withWorkdir("app")
     let manifest = sdkHelpers.moduleManifest().withName("check")
@@ -254,7 +256,10 @@ type ManifestChecks {
     self.assertSame(withoutJSON.file("dagger-module.toml").contents, first.file("dagger-module.toml").contents)
     self.assertWorkspaceKept(withoutJSON, ws)
     if (withoutJSON.directory(".").exists("dagger.json")) {
-      raise "JSON disabled must remove dagger.json from the output"
+      raise "JSON disabled must remove an ignored dagger.json from the output"
+    }
+    if (withoutJSON.file(".cache/blob").contents != "ignored") {
+      raise "generation must preserve ignored files"
     }
     if (!first.directory(".").exists("dagger.json")) {
       raise "generation must preserve the input workspace"

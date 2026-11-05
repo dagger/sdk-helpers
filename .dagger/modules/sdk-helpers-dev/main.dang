@@ -349,6 +349,23 @@ type SdkHelpersDev {
     if (entrypointOnly.directory(".").exists("dagger.json")) {
       raise "a manifest without legacy fields must not generate dagger.json"
     }
+
+    let ignored = workspace
+      .withNewFile(".gitignore", "dagger.json\n.cache/\n")
+      .withNewFile(".cache/blob", "ignored")
+    let removed = manifest.generate(ignored, legacyJson: false)
+    if (removed.directory(".").exists("dagger.json")) {
+      raise "JSON disabled must remove an ignored dagger.json"
+    }
+    let written = manifest.generate(ignored)
+    if (!written.file("dagger.json").contents.contains("\"name\": \"check\"")) {
+      raise "JSON enabled must write an ignored dagger.json"
+    }
+    [removed, written].each { output =>
+      if (output.file(".cache/blob").contents != "ignored" or output.file("keep.txt").contents != "keep") {
+        raise "generation must preserve ignored and other files"
+      }
+    }
     null
   }
 
