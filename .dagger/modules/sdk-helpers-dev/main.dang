@@ -1,5 +1,5 @@
 """Development module for sdk-helpers"""
-type SdkHelpersDev {
+type SDKHelpersDev {
   """Check manifest contracts with in-memory fixtures."""
   manifest: ManifestChecks! { ManifestChecks }
 
@@ -30,7 +30,7 @@ type SdkHelpersDev {
   }
 
   """Loaded JSON pins are optional output. Other dependency settings remain intact."""
-  controlsLoadedJSONPins: Void @check {
+  controlsLoadedJsonPins: Void @check {
     let loaded = sdkHelpers.moduleManifest(loadJson: Dagger.file("dagger.json",
       "{\"name\":\"check\",\"engineVersion\":\"v0.20.3\"," +
         "\"sdk\":{\"source\":\"example.invalid/runtime@v1\",\"pin\":\"runtime-pin\",\"config\":{\"keep\":true}}," +
@@ -53,7 +53,7 @@ type SdkHelpersDev {
   }
 
   """Loaded TOML pins are retained for locked output, including when JSON is also loaded."""
-  controlsLoadedTOMLPins: Void @check {
+  controlsLoadedTomlPins: Void @check {
     let loaded = sdkHelpers.moduleManifest(
       loadJson: Dagger.file("dagger.json", "{\"name\":\"old\",\"engineVersion\":\"v0.20.3\",\"sdk\":\"go\",\"dependencies\":[{\"source\":\"example.invalid/stale\",\"pin\":\"stale-pin\"}]}"),
       loadToml: Dagger.file("dagger-module.toml",
@@ -335,7 +335,7 @@ type SdkHelpersDev {
   }
 
   """JSON output can be disabled without leaving an old manifest in the output workspace."""
-  controlsLegacyJSONOutput: Void @check {
+  controlsLegacyJsonOutput: Void @check {
     let workspace = self.workspace.withNewFile("dagger.json", "old")
     let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
     let output = manifest.generate(workspace, legacyJson: false)

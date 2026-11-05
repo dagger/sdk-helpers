@@ -3,7 +3,7 @@
 The root `dagger.toml` registers this module. Run its check by name:
 
 ```sh
-dagger check --generated=false e-2-e/legacy-caller-check
+dagger check --generated=false e2e/legacy-caller-check
 ```
 
 The root `README.md` lists every check and the validated CLI and engine pair.
@@ -12,7 +12,7 @@ The root `README.md` lists every check and the validated CLI and engine pair.
 
 | Check | Contract | Cap | Git download |
 | --- | --- | --- | --- |
-| `e-2-e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. The helper keeps its own `v1.0.0` API selection. | 180 s | None |
+| `e2e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. The helper keeps its own `v1.0.0-beta.26` API selection. | 180 s | None |
 
 The cap is a proposed acceptance limit, not a measured runtime.
 
@@ -24,7 +24,7 @@ of the `dagger check` command, with no downloaded CLI and no Go build.
 Read a result with this command:
 
 ```sh
-dagger trace <trace-id> --check e-2-e/legacy-caller-check
+dagger trace <trace-id> --check e2e/legacy-caller-check
 ```
 
 ## Go SDK coverage

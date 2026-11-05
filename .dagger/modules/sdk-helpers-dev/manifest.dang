@@ -141,9 +141,9 @@ type ManifestChecks {
       fresh.withLegacyTypescriptRuntime.generate(ws),
       loaded.withLegacyTypescriptRuntime.generate(ws))
     self.assertBuiltinRuntime("php",
-      fresh.withLegacyPHPRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
-      fresh.withLegacyPHPRuntime.generate(ws),
-      loaded.withLegacyPHPRuntime.generate(ws))
+      fresh.withLegacyPhpRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
+      fresh.withLegacyPhpRuntime.generate(ws),
+      loaded.withLegacyPhpRuntime.generate(ws))
     self.assertBuiltinRuntime("elixir",
       fresh.withLegacyElixirRuntime(moduleSource: "src", engineVersion: "v0.20.3").generate(ws),
       fresh.withLegacyElixirRuntime.generate(ws),

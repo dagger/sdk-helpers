@@ -1,13 +1,13 @@
 """Helpers for Dagger SDKs."""
-type SdkHelpers {
+type SDKHelpers {
   """Construct or load a module manifest."""
   moduleManifest(
     """Optional dagger-module.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
     """Optional dagger.json file to load."""
-    loadJSON: File = null,
+    loadJson: File = null,
   ): ModuleManifest! {
-    ModuleManifest(loadTOML: loadTOML, loadJSON: loadJSON)
+    ModuleManifest(loadToml: loadToml, loadJson: loadJson)
   }
 
   """
@@ -22,17 +22,17 @@ type SdkHelpers {
   ): ModuleManifest! {
     let dir = ws.directory(".", include: ["dagger-module.toml", "dagger.json"])
     ModuleManifest(
-      loadTOML: if (dir.exists("dagger-module.toml")) { dir.file("dagger-module.toml") } else { null },
-      loadJSON: if (dir.exists("dagger.json")) { dir.file("dagger.json") } else { null },
+      loadToml: if (dir.exists("dagger-module.toml")) { dir.file("dagger-module.toml") } else { null },
+      loadJson: if (dir.exists("dagger.json")) { dir.file("dagger.json") } else { null },
     )
   }
 
   """Construct or load a Dang project configuration."""
   dangConfig(
     """Optional dang.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
   ): DangConfig! {
-    DangConfig(loadTOML: loadTOML)
+    DangConfig(loadToml: loadToml)
   }
 
   """
@@ -45,7 +45,7 @@ type SdkHelpers {
     ws: Workspace!,
   ): DangConfig! {
     let dir = ws.directory(".", include: ["dang.toml"])
-    DangConfig(loadTOML: if (dir.exists("dang.toml")) { dir.file("dang.toml") } else { null })
+    DangConfig(loadToml: if (dir.exists("dang.toml")) { dir.file("dang.toml") } else { null })
   }
 }
 
@@ -59,12 +59,12 @@ type DangConfig {
 
   new(
     """Optional dang.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
   ) {
-    if (loadTOML == null) {
+    if (loadToml == null) {
       self
     } else {
-      self.load(loadTOML.contents)
+      self.load(loadToml.contents)
     }
   }
 
@@ -210,19 +210,19 @@ type ModuleManifest {
 
   new(
     """Optional dagger-module.toml file to load."""
-    loadTOML: File = null,
+    loadToml: File = null,
     """Optional dagger.json file to load."""
-    loadJSON: File = null,
+    loadJson: File = null,
   ) {
-    let withJSON = if (loadJSON == null) {
+    let withJSON = if (loadJson == null) {
       self
     } else {
-      self.loadJSON(loadJSON.contents)
+      self.loadJSON(loadJson.contents)
     }
-    if (loadTOML == null) {
+    if (loadToml == null) {
       withJSON
     } else {
-      withJSON.loadTOML(loadTOML.contents)
+      withJSON.loadTOML(loadToml.contents)
     }
   }
 
@@ -388,8 +388,7 @@ type ModuleManifest {
   }
 
   """Add the legacy PHP runtime."""
-  # Separate acronym letters to preserve the public GraphQL name.
-  withLegacyP_H_P_Runtime(
+  withLegacyPhpRuntime(
     """Module source path. The default keeps the loaded path, or uses the manifest directory."""
     moduleSource: String = null,
     """Required engine API version. The default keeps the loaded version, or uses the running engine version."""
