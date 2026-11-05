@@ -1,9 +1,11 @@
 # SDK helpers
 
 Use `ModuleManifest` to load, change, and generate Dagger module manifests.
-The manifest selects engine API version `v1.0.0`.
-Callers can still select `v0.21.9` on that engine. The helper needs the newer
-API for its own Workspace operations.
+The manifest selects engine API version `v1.0.0-beta.26`, the first with the
+identifier naming conventions: types spell acronyms in capitals
+(`SDKHelpersModuleManifest`), and fields and arguments spell them like words
+(`loadJson`, `withLegacyPhpRuntime`). Callers can still select `v0.21.9` on
+that engine. The helper needs the newer API for its own Workspace operations.
 
 ## Generate manifests
 
@@ -128,6 +130,9 @@ are written in alphabetical order.
 - Replace a manifest built from scratch with `loadModuleManifest(ws)` and
   `withLegacyRuntimeDependencies(modules)` to regenerate an existing module
   without losing its fields.
+- Replace `withLegacyPHPRuntime` with `withLegacyPhpRuntime`.
+- Replace the type names `SdkHelpers…` with `SDKHelpers…`, such as
+  `SDKHelpersModuleManifest` and `SDKHelpersDangConfig`.
 
 ## Run checks
 
@@ -136,13 +141,13 @@ Run each check by name, one at a time:
 ```sh
 dagger check --generated=false manifest/loads-manifest-formats
 dagger check --generated=false omits-default-module-source
-dagger check --generated=false e-2-e/legacy-caller-check
+dagger check --generated=false e2e/legacy-caller-check
 ```
 
 List the check names with `dagger check -l`.
 
-All 26 named checks passed with CLI `v1.0.0-beta.21` (commit `a7a2e64e`) and
-engine `v1.0.0-beta.21`.
+All 29 named checks passed with CLI and engine `v1.0.0-beta.26` built from
+`dagger/dagger` commit `acd518a7`.
 
 ### Coverage
 
@@ -162,8 +167,8 @@ runtime. A check over its cap fails acceptance.
 | `omits-default-module-source` | A module source of `.` is not written to TOML. | 120 s | None |
 | `keeps-loaded-module-source-unset` | Regeneration adds no module source. | 120 s | None |
 | `keeps-workspace-manifest-fields` | Loaded fields that the caller does not set remain. | 120 s | None |
-| `controls-loaded-jsonpins` | Loaded JSON pins are written only with `lock: true`. | 120 s | None |
-| `controls-loaded-tomlpins` | Loaded TOML pins are written only with `lock: true`. | 120 s | None |
+| `controls-loaded-json-pins` | Loaded JSON pins are written only with `lock: true`. | 120 s | None |
+| `controls-loaded-toml-pins` | Loaded TOML pins are written only with `lock: true`. | 120 s | None |
 | `skips-pin-lookup` | Generation does not look up missing pins. | 120 s | None |
 | `places-local-dependencies` | Local paths are relative to `ws.cwd` and have no pins. | 120 s | None |
 | `replaces-dependency` | A dependency with the same name is replaced without a duplicate. | 120 s | None |
@@ -172,11 +177,11 @@ runtime. A check over its cap fails acceptance.
 | `keeps-loaded-custom-legacy-runtime` | A loaded custom runtime and its pin remain until replaced. | 120 s | None |
 | `rejects-bare-custom-legacy-runtime` | An unknown single-word runtime is rejected with the local path to use. | 120 s | None |
 | `rejects-absolute-dependency-paths` | Absolute dependency sources are rejected when loaded. | 120 s | None |
-| `controls-legacy-jsonoutput` | `legacyJson: false` removes JSON and retains TOML. | 120 s | None |
+| `controls-legacy-json-output` | `legacyJson: false` removes JSON and retains TOML. | 120 s | None |
 | `composes-custom-legacy-runtime` | A custom runtime composes with the other setters. `withLegacyInclude` adds and `withoutLegacyFields` resets. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
 | `honors-supplied-git-module` | A supplied commit is written only with `lock: true`. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861` |
 | `places-same-repository-git-modules` | A module from the workspace repository is a relative path without a pin. Another commit stays a URL. | 300 s | `64645f1967d3dba6fce951dd61ae4acd8d9b0861`, `41fd4d3062d75a836429c6db5c42b4c6c9178ca4` |
-| `e-2-e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. | 180 s | None |
+| `e2e/legacy-caller-check` | A module that declares `v0.21.9` calls this checkout. | 180 s | None |
 
 All Git downloads come from `github.com/dagger/sdk-helpers`. No check downloads
 a CLI or builds Go code.
