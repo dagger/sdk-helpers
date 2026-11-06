@@ -359,6 +359,28 @@ type SdkHelpersDev {
     null
   }
 
+  """Removing a linked legacy manifest preserves its target, including when the link is dangling or ignored."""
+  removesLinkedLegacyManifest: Void @check {
+    let files = Dagger.directory
+      .withNewFile("app/config/legacy.json", "legacy manifest target")
+      .withNewFile("app/.gitignore", "dagger.json\nconfig/\n")
+    let manifest = sdkHelpers.moduleManifest.withName("linked-manifest").withDangEntrypoint("main.dang")
+    ["config/legacy.json", "config/missing.json"].each { target =>
+      let input = files.withSymlink(target, "app/dagger.json").asWorkspace.withWorkdir("app")
+      let output = manifest.generate(input, legacyJson: false)
+      if (output.directory(".").exists("dagger.json", doNotFollowSymlinks: true)) {
+        raise "generation left the linked legacy manifest in place: " + target
+      }
+      if (output.file("config/legacy.json").contents != "legacy manifest target") {
+        raise "removing the legacy manifest changed its target"
+      }
+      if (!input.directory(".").exists("dagger.json", doNotFollowSymlinks: true)) {
+        raise "generation changed the input workspace's legacy manifest"
+      }
+    }
+    null
+  }
+
   """A supplied Git module keeps its source and selected commit."""
   honorsSuppliedGitModule: Void @check {
     let module = Dagger.moduleSource("github.com/dagger/sdk-helpers@main", refPin: self.gitCommit)
