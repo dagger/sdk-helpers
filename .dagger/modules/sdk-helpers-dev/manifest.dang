@@ -230,6 +230,8 @@ type ManifestChecks {
       .withNewFile("deps/lib/dagger.json", "{\"name\":\"lib\",\"engineVersion\":\"v0.21.9\",\"sdk\":\"dang\"}")
       .withNewFile("deps/lib/main.dang", "type Lib { hello: String! { \"hello\" } }")
       .withNewFile("app/keep.txt", "keep")
+      .withNewFile("app/.gitignore", "dagger.json\nignored.txt\n")
+      .withNewFile("app/ignored.txt", "ignored")
       .withNewFile("root.txt", "root")
     let ws = directory.asWorkspace.withWorkdir("app")
     let manifest = sdkHelpers.moduleManifest().withName("check")
@@ -253,6 +255,7 @@ type ManifestChecks {
     let withoutJSON = loaded.generate(first, lock: true, legacyJson: false)
     self.assertSame(withoutJSON.file("dagger-module.toml").contents, first.file("dagger-module.toml").contents)
     self.assertWorkspaceKept(withoutJSON, ws)
+    self.assertSame(withoutJSON.file("ignored.txt").contents, "ignored")
     if (withoutJSON.directory(".").exists("dagger.json")) {
       raise "JSON disabled must remove dagger.json from the output"
     }
