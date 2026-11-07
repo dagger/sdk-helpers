@@ -509,7 +509,7 @@ type ModuleManifest {
     )
     if (writeJSON) {
       output.withNewFile("dagger.json", prepared.legacyJSONContents, permissions: 420)
-    } else if (output.directory(".").exists("dagger.json")) {
+    } else if (output.directory(".", include: ["dagger.json"]).exists("dagger.json", doNotFollowSymlinks: true)) {
       output.withoutFile("dagger.json")
     } else {
       output

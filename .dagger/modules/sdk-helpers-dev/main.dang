@@ -336,18 +336,47 @@ type SdkHelpersDev {
 
   """JSON output can be disabled without leaving an old manifest in the output workspace."""
   controlsLegacyJSONOutput: Void @check {
-    let workspace = self.workspace.withNewFile("dagger.json", "old")
+    let workspace = self.workspace
+      .withNewFile(".gitignore", "dagger.json\ncache/\n")
+      .withNewFile("cache/keep.txt", "ignored")
+      .withNewFile("dagger.json", "old")
     let manifest = sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime
     let output = manifest.generate(workspace, legacyJson: false)
     if (output.directory(".").exists("dagger.json") or !output.directory(".").exists("dagger-module.toml")) {
       raise "JSON disabled must leave only the TOML manifest"
     }
-    if (workspace.file("dagger.json").contents != "old" or output.file("keep.txt").contents != "keep") {
+    if (workspace.file("dagger.json").contents != "old" or output.file("keep.txt").contents != "keep" or
+      output.file("cache/keep.txt").contents != "ignored") {
       raise "generation must preserve the input workspace and other files"
     }
     let entrypointOnly = manifest.withoutLegacyFields.withDangEntrypoint("main.dang").generate(workspace)
     if (entrypointOnly.directory(".").exists("dagger.json")) {
       raise "a manifest without legacy fields must not generate dagger.json"
+    }
+    if (manifest.generate(workspace).file("dagger.json").contents == "old") {
+      raise "legacy generation must replace an ignored dagger.json"
+    }
+    null
+  }
+
+  """Removing a linked legacy manifest preserves its target, including when the link is dangling or ignored."""
+  removesLinkedLegacyManifest: Void @check {
+    let files = Dagger.directory
+      .withNewFile("app/config/legacy.json", "legacy manifest target")
+      .withNewFile("app/.gitignore", "dagger.json\nconfig/\n")
+    let manifest = sdkHelpers.moduleManifest.withName("linked-manifest").withDangEntrypoint("main.dang")
+    ["config/legacy.json", "config/missing.json"].each { target =>
+      let input = files.withSymlink(target, "app/dagger.json").asWorkspace.withWorkdir("app")
+      let output = manifest.generate(input, legacyJson: false)
+      if (output.directory(".").exists("dagger.json", doNotFollowSymlinks: true)) {
+        raise "generation left the linked legacy manifest in place: " + target
+      }
+      if (output.file("config/legacy.json").contents != "legacy manifest target") {
+        raise "removing the legacy manifest changed its target"
+      }
+      if (!input.directory(".").exists("dagger.json", doNotFollowSymlinks: true)) {
+        raise "generation changed the input workspace's legacy manifest"
+      }
     }
     null
   }
