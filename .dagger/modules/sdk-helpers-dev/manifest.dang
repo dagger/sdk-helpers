@@ -119,6 +119,34 @@ type ManifestChecks {
     self.assertAbsent(legacy.file("dagger.json").contents, source)
   }
 
+  """Removing a loaded entrypoint keeps every other loaded field, and the module then needs a runtime."""
+  removesEntrypoint: Void @check {
+    let ws = self.workspace
+    let fields = "name = \"check\"\nengineVersion = \"v0.20.3\"\ninclude = [\"src/**\"]\nsource = \"src\"\n\n" +
+      "[runtime]\nsource = \"go\"\npin = \"abc\"\n\n" +
+      "[[dependencies]]\nname = \"dep\"\nsource = \"example.invalid/dep\"\npin = \"def\"\n\n" +
+      "[codegen]\nautomaticGitignore = false\n\n" +
+      "[[clients]]\ngenerator = \"go\"\ndirectory = \"client\"\n"
+    let loaded = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml",
+      fields + "\n[entrypoint]\nkind = \"module\"\nsource = \"github.com/acme/old\"\n"))
+    let expected = sdkHelpers.moduleManifest(loadToml: Dagger.file("dagger-module.toml", fields))
+    [false, true].each { lock =>
+      let output = loaded.withoutEntrypoint.generate(ws, lock: lock)
+      self.assertSameManifests(output, expected.generate(ws, lock: lock))
+      self.assertAbsent(output.file("dagger-module.toml").contents, "entrypoint")
+    }
+    self.assertContains(loaded.generate(ws).file("dagger-module.toml").contents, "[entrypoint]")
+
+    let entrypointOnly = sdkHelpers.moduleManifest(loadToml: self.loadedEntrypoint).withoutEntrypoint
+    self.assertContains(self.generationError(entrypointOnly.generate(ws)),
+      "module manifest requires an entrypoint or legacy runtime")
+    self.assertSameManifests(
+      entrypointOnly.withLegacyGoRuntime(engineVersion: "v0.20.3").generate(ws),
+      sdkHelpers.moduleManifest().withName("check").withLegacyGoRuntime(engineVersion: "v0.20.3").generate(ws),
+    )
+    self.assertOnlyEntrypoint(entrypointOnly.withDangEntrypoint("main.dang").generate(ws), "dang", "main.dang")
+  }
+
   """Each built-in runtime method matches the generic setter for explicit, default, and loaded values."""
   writesBuiltinLegacyRuntimes: Void @check {
     let ws = self.workspace

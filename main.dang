@@ -323,6 +323,11 @@ type ModuleManifest {
     self.withEntrypoint("module", source)
   }
 
+  """Remove the entrypoint, including one loaded from a manifest."""
+  withoutEntrypoint: ModuleManifest! {
+    self.withEntrypoint("", "")
+  }
+
   """
   Add a legacy runtime by source.
 

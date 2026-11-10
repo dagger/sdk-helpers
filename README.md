@@ -26,6 +26,10 @@ It loads `dagger-module.toml` and `dagger.json` when present. Without either
 file, the manifest is empty. Generation keeps the loaded fields that the caller
 does not change, such as `include`, `source`, and `codegen`.
 
+Call `manifest.withoutEntrypoint` to remove an entrypoint, including a loaded
+`[entrypoint]` table. Generation then needs a legacy runtime, for example
+`withLegacyPythonRuntime`.
+
 The legacy runtime methods keep a loaded module source and engine version
 unless the caller passes new values. On an empty manifest, they use the
 manifest directory and the running engine version.
@@ -141,8 +145,9 @@ dagger check --generated=false e-2-e/legacy-caller-check
 
 List the check names with `dagger check -l`.
 
-All 26 named checks passed with CLI `v1.0.0-beta.21` (commit `a7a2e64e`) and
-engine `v1.0.0-beta.21`.
+The 26 named checks other than `manifest/removes-entrypoint` passed with CLI
+`v1.0.0-beta.21` (commit `a7a2e64e`) and engine `v1.0.0-beta.21`.
+`manifest/removes-entrypoint` passed with CLI and engine `v1.0.0-beta.25`.
 
 ### Coverage
 
@@ -154,6 +159,7 @@ runtime. A check over its cap fails acceptance.
 | `manifest/loads-manifest-formats` | JSON only, TOML only, both, and neither. TOML precedence and retained legacy-only JSON fields. | 120 s | None |
 | `manifest/writes-dang-entrypoint` | A Dang source file: kind `dang`, source, name, replacement of an earlier entrypoint, and no legacy output. | 120 s | None |
 | `manifest/writes-module-entrypoint` | A versioned module reference: kind `module`, source, name, replacement of an earlier entrypoint, and no legacy output. | 120 s | None |
+| `manifest/removes-entrypoint` | Removal of a loaded entrypoint keeps the other loaded fields and pins. A manifest left without an entrypoint or runtime is rejected. | 120 s | None |
 | `manifest/writes-builtin-legacy-runtimes` | Each runtime method matches `withLegacyRuntime`. Explicit, default, and loaded values, and version normalization. | 120 s | None |
 | `manifest/removes-legacy-dependencies` | Named removal, unnamed-source removal, list replacement, and clearing. Other dependencies and the original builder stay intact. | 120 s | None |
 | `manifest/regenerates-manifests` | Stable `generate(ws, lock, legacyJson)`, repeated generation, and load then regenerate in a nested workspace. | 120 s | None |
