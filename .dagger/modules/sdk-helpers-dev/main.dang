@@ -179,7 +179,7 @@ type SdkHelpersDev {
       let output = sdkHelpers.moduleManifest().withName("check")
         .withLegacyRuntime(runtime, engineVersion: "v0.20.3").generate(self.workspace, lock: true)
       self.assertContains(output.file("dagger-module.toml").contents,
-        "[runtime]\n  source = " + JSON.encode(runtime))
+        "[runtime]\nsource = " + JSON.encode(runtime))
       self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
       self.assertNoPins(output)
     }
@@ -226,10 +226,10 @@ type SdkHelpersDev {
       .withLegacyRuntimeDependency(module)
     let output = manifest.generate(self.workspace, lock: true)
     let toml = output.file("dagger-module.toml").contents
-    self.assertContains(toml, "[runtime]\n  source = " + JSON.encode(runtime))
+    self.assertContains(toml, "[runtime]\nsource = " + JSON.encode(runtime))
     self.assertContains(toml, "include = [\"src/**\", \"extra/**\"]")
     self.assertContains(toml, "source = \"module-src\"")
-    self.assertContains(toml, "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\"")
+    self.assertContains(toml, "[entrypoint]\nkind = \"dang\"\nsource = \"main.dang\"")
     self.assertContains(toml, "pin = " + JSON.encode(self.gitCommit))
     self.assertContains(output.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
     self.assertContains(output.file("dagger.json").contents, "\"src/**\",\n    \"extra/**\"")
@@ -237,7 +237,7 @@ type SdkHelpersDev {
     ["[runtime]", "python-sdk", "engineVersion", "include", "module-src", "[[dependencies]]", "pin ="].each { field =>
       self.assertAbsent(reset.file("dagger-module.toml").contents, field)
     }
-    self.assertContains(reset.file("dagger-module.toml").contents, "[entrypoint]\n  kind = \"dang\"")
+    self.assertContains(reset.file("dagger-module.toml").contents, "[entrypoint]\nkind = \"dang\"")
     if (reset.directory(".").exists("dagger.json")) {
       raise "a manifest without legacy fields must not generate dagger.json"
     }
@@ -253,11 +253,11 @@ type SdkHelpersDev {
     let loaded = sdkHelpers.loadModuleManifest(ws)
     let locked = loaded.generate(ws, lock: true)
     self.assertContains(locked.file("dagger-module.toml").contents,
-      "[runtime]\n  source = " + JSON.encode(runtime) + "\n  pin = \"runtime-pin\"")
+      "[runtime]\nsource = " + JSON.encode(runtime) + "\npin = \"runtime-pin\"")
     self.assertContains(locked.file("dagger.json").contents, "\"source\": " + JSON.encode(runtime))
     let replaced = loaded.withLegacyRuntime("./runtime").generate(ws, lock: true)
     self.assertContains(replaced.file("dagger-module.toml").contents,
-      "[runtime]\n  source = \"./runtime\"")
+      "[runtime]\nsource = \"./runtime\"")
     self.assertContains(replaced.file("dagger-module.toml").contents, "engineVersion = \"v0.20.3\"")
     self.assertAbsent(replaced.file("dagger-module.toml").contents, "python-sdk")
     self.assertAbsent(replaced.file("dagger-module.toml").contents, "runtime-pin")
@@ -265,7 +265,7 @@ type SdkHelpersDev {
       "name = \"check\"\nengineVersion = \"v0.20.3\"\n\n[runtime]\n  source = \"runtime\"\n")
     let regenerated = sdkHelpers.loadModuleManifest(bare).generate(bare)
     self.assertContains(regenerated.file("dagger-module.toml").contents,
-      "[runtime]\n  source = \"runtime\"")
+      "[runtime]\nsource = \"runtime\"")
     self.assertContains(regenerated.file("dagger.json").contents, "\"source\": \"runtime\"")
   }
 
