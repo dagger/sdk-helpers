@@ -139,7 +139,9 @@ type DangConfig {
     ws: Workspace!,
   ): Workspace! {
     let versioned = self.withVersion(self.version)
-    ws.withNewFile("dang.toml", TOML.encode(JSON.decode(versioned.config)) + "\n", permissions: 420)
+    # TOML.encode indents nested tables and escapes newlines in strings, so leading spaces are only indentation.
+    let lines = TOML.encode(JSON.decode(versioned.config)).split("\n").map { line => line.trimLeft(" ") }
+    ws.withNewFile("dang.toml", lines.join("\n") + "\n", permissions: 420)
   }
 
   let load(contents: String!): DangConfig! {
@@ -859,20 +861,20 @@ type ModuleManifest {
         ""
       }
       [
-        "[runtime]\n  source = " + self.tomlString(legacyRuntime) +
-          (if (pin == "") { "" } else { "\n  pin = " + self.tomlString(pin) }),
+        "[runtime]\nsource = " + self.tomlString(legacyRuntime) +
+          (if (pin == "") { "" } else { "\npin = " + self.tomlString(pin) }),
       ]
     }
     let dependencyTables = legacyRuntimeDependencies.map { configured =>
       let dependency = configured.config
       let dependencyName = self.dependencyName(dependency)
       "[[dependencies]]\n" +
-        (if (dependencyName == "") { "" } else { "  name = " + self.tomlString(dependencyName) + "\n" }) +
-        "  source = " + self.tomlString(self.dependencySource(dependency)) +
+        (if (dependencyName == "") { "" } else { "name = " + self.tomlString(dependencyName) + "\n" }) +
+        "source = " + self.tomlString(self.dependencySource(dependency)) +
         (if (self.dependencyPin(dependency) == "") {
           ""
         } else {
-          "\n  pin = " + self.tomlString(self.dependencyPin(dependency))
+          "\npin = " + self.tomlString(self.dependencyPin(dependency))
         })
     }
     let codegenTable = self.tomlCodegen(base)
@@ -883,8 +885,8 @@ type ModuleManifest {
       [] :: [String!]!
     } else {
       [
-        "[entrypoint]\n  kind = " + self.tomlString(entrypointKind) +
-          "\n  source = " + self.tomlString(entrypointSource),
+        "[entrypoint]\nkind = " + self.tomlString(entrypointKind) +
+          "\nsource = " + self.tomlString(entrypointSource),
       ]
     }
     let tables = runtimeTable + dependencyTables + codegenTable + clientTables + entrypointTable
@@ -1073,15 +1075,15 @@ type ModuleManifest {
         "[codegen]" + (if (automaticGitignore == null) {
           ""
         } else {
-          "\n  automaticGitignore = " + (if (automaticGitignore) { "true" } else { "false" })
+          "\nautomaticGitignore = " + (if (automaticGitignore) { "true" } else { "false" })
         }),
       ]
     }
   }
 
   let tomlClient(client: String!): String! {
-    "[[clients]]\n  generator = " + self.tomlString(self.stringField(client, "generator")) +
-      "\n  directory = " + self.tomlString(self.stringField(client, "directory"))
+    "[[clients]]\ngenerator = " + self.tomlString(self.stringField(client, "generator")) +
+      "\ndirectory = " + self.tomlString(self.stringField(client, "directory"))
   }
 
   let optionalTOMLString(config: String, field: String!, outputName: String!): [String!]! {

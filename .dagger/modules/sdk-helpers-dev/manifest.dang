@@ -20,8 +20,8 @@ type ManifestChecks {
 
     let fromJSON = sdkHelpers.moduleManifest(loadJson: jsonFile).generate(ws)
     ["name = \"from-json\"", "engineVersion = \"v0.20.1\"", "include = [\"json/**\"]", "source = \"json-src\"",
-      "[runtime]\n  source = \"go\"", "name = \"json-dep\"", "automaticGitignore = true",
-      "[[clients]]\n  generator = \"go\"\n  directory = \"client\""].each { expected =>
+      "[runtime]\nsource = \"go\"", "name = \"json-dep\"", "automaticGitignore = true",
+      "[[clients]]\ngenerator = \"go\"\ndirectory = \"client\""].each { expected =>
       self.assertContains(fromJSON.file("dagger-module.toml").contents, expected)
     }
     ["blueprint", "toolchains", "ignoreChecks", "keep"].each { unexpected =>
@@ -35,7 +35,7 @@ type ManifestChecks {
     let fromTOML = sdkHelpers.moduleManifest(loadToml: tomlFile).generate(ws)
     ["name = \"from-toml\"", "engineVersion = \"v0.20.3\"", "include = [\"toml/**\"]", "source = \"toml-src\"",
       "name = \"toml-dep\"", "automaticGitignore = false",
-      "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\""].each { expected =>
+      "[entrypoint]\nkind = \"dang\"\nsource = \"main.dang\""].each { expected =>
       self.assertContains(fromTOML.file("dagger-module.toml").contents, expected)
     }
     self.assertContains(fromTOML.file("dagger.json").contents, "\"name\": \"from-toml\"")
@@ -50,7 +50,7 @@ type ManifestChecks {
       self.assertAbsent(fromBoth.file("dagger-module.toml").contents, unexpected)
     }
     ["name = \"from-toml\"", "engineVersion = \"v0.20.3\"", "name = \"toml-dep\"", "automaticGitignore = false",
-      "[entrypoint]\n  kind = \"dang\""].each { expected =>
+      "[entrypoint]\nkind = \"dang\""].each { expected =>
       self.assertContains(fromBoth.file("dagger-module.toml").contents, expected)
     }
     ["\"name\": \"from-toml\"", "\"engineVersion\": \"v0.20.3\"", "\"source\": \"toml-src\"", "\"toml/**\"",
@@ -93,7 +93,7 @@ type ManifestChecks {
     }
     let legacy = fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withDangEntrypoint("main.dang").generate(ws)
     self.assertContains(legacy.file("dagger-module.toml").contents,
-      "[entrypoint]\n  kind = \"dang\"\n  source = \"main.dang\"")
+      "[entrypoint]\nkind = \"dang\"\nsource = \"main.dang\"")
     self.assertAbsent(legacy.file("dagger.json").contents, "entrypoint")
     self.assertAbsent(legacy.file("dagger.json").contents, "main.dang")
   }
@@ -114,7 +114,7 @@ type ManifestChecks {
     }
     let legacy = fresh.withLegacyGoRuntime(engineVersion: "v0.20.3").withModuleEntrypoint(source).generate(ws)
     self.assertContains(legacy.file("dagger-module.toml").contents,
-      "[entrypoint]\n  kind = \"module\"\n  source = " + JSON.encode(source))
+      "[entrypoint]\nkind = \"module\"\nsource = " + JSON.encode(source))
     self.assertAbsent(legacy.file("dagger.json").contents, "entrypoint")
     self.assertAbsent(legacy.file("dagger.json").contents, source)
   }
@@ -430,7 +430,7 @@ type ManifestChecks {
   let assertBuiltinRuntime(runtime: String!, explicit: Workspace!, defaults: Workspace!, loaded: Workspace!): Void {
     let encoded = JSON.encode(runtime)
     let fresh = sdkHelpers.moduleManifest().withName("check")
-    let table = "[runtime]\n  source = " + encoded + "\n"
+    let table = "[runtime]\nsource = " + encoded + "\n"
     let sdk = "\"sdk\": {\n    \"source\": " + encoded + "\n  }"
     self.assertSame(explicit.file("dagger-module.toml").contents,
       "name = \"check\"\nengineVersion = \"v0.20.3\"\nsource = \"src\"\n\n" + table)
@@ -455,7 +455,7 @@ type ManifestChecks {
 
   let assertOnlyEntrypoint(output: Workspace!, kind: String!, source: String!): Void {
     self.assertSame(output.file("dagger-module.toml").contents,
-      "name = \"check\"\n\n[entrypoint]\n  kind = " + JSON.encode(kind) + "\n  source = " + JSON.encode(source) + "\n")
+      "name = \"check\"\n\n[entrypoint]\nkind = " + JSON.encode(kind) + "\nsource = " + JSON.encode(source) + "\n")
     if (output.directory(".").exists("dagger.json")) {
       raise "an entrypoint without legacy fields must not generate dagger.json"
     }
