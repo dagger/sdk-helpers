@@ -1,5 +1,5 @@
 """Check the public manifest API from a caller module."""
-type E2e {
+type E2E {
   """A caller that selects the v0.21 API can use the helper on the current engine."""
   legacyCallerCheck(ws: Workspace!): Void @check {
     let output = legacyCaller.generate(ws)
